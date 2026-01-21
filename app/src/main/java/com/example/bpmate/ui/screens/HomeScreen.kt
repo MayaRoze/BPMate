@@ -11,7 +11,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun HomeScreen(
     onStartNewActivity: () -> Unit,
-    onViewHistory: () -> Unit
+    onViewHistory: () -> Unit,
+    onManagePlaylists: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -35,6 +36,13 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(0.7f)
             ) {
                 Text("Start an Activity")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(
+                onClick = onManagePlaylists,
+                modifier = Modifier.fillMaxWidth(0.7f)
+            ) {
+                Text("Manage Playlists")
             }
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedButton(

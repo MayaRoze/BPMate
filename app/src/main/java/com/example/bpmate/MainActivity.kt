@@ -8,11 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.bpmate.ui.screens.AnalysisScreen
-import com.example.bpmate.ui.screens.CreateActivityScreen
-import com.example.bpmate.ui.screens.HistoryScreen
-import com.example.bpmate.ui.screens.HomeScreen
-import com.example.bpmate.ui.screens.PlayerScreen
+import com.example.bpmate.ui.screens.*
 import com.example.bpmate.ui.theme.BPMateTheme
 
 class MainActivity : ComponentActivity() {
@@ -35,7 +31,13 @@ fun BPMateApp() {
         composable("home") {
             HomeScreen(
                 onStartNewActivity = { navController.navigate("create_activity") },
-                onViewHistory = { navController.navigate("history") }
+                onViewHistory = { navController.navigate("history") },
+                onManagePlaylists = { navController.navigate("playlists") }
+            )
+        }
+        composable("playlists") {
+            PlaylistManagementScreen(
+                onBack = { navController.popBackStack() }
             )
         }
         composable("create_activity") {
@@ -60,7 +62,7 @@ fun BPMateApp() {
         composable("history") {
             HistoryScreen(
                 onActivityClick = { activityId ->
-                    navController.navigate("analysis") // In real app, pass activityId
+                    navController.navigate("analysis")
                 },
                 onBack = { navController.popBackStack() }
             )
