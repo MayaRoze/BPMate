@@ -75,10 +75,14 @@ fun PlayerScreen(
         }
         p.addListener(listener)
         
-        // Polling for position
-        while (true) {
-            position = p.currentPosition.coerceAtLeast(0L)
-            kotlinx.coroutines.delay(1000)
+        try {
+            // Polling for position
+            while (true) {
+                position = p.currentPosition.coerceAtLeast(0L)
+                kotlinx.coroutines.delay(1000)
+            }
+        } finally {
+            p.removeListener(listener)
         }
     }
 
