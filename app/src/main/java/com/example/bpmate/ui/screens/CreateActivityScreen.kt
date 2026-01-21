@@ -12,13 +12,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.bpmate.playback.PlaybackViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateActivityScreen(
     onStartRecording: (String) -> Unit,
     onBack: () -> Unit,
-    playlistViewModel: PlaylistViewModel = viewModel()
+    playlistViewModel: PlaylistViewModel = viewModel(),
+    playbackViewModel: PlaybackViewModel = viewModel()
 ) {
     var name by remember { mutableStateOf("") }
     var selectedPlaylistName by remember { mutableStateOf("Select Playlist") }
@@ -107,7 +109,13 @@ fun CreateActivityScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = { selectedPlaylistId?.let { onStartRecording(it) } },
+                onClick = { 
+                    val playlist = playlists.find { it.id == selectedPlaylistId }
+                    if (playlist != null) {
+                        playbackViewModel.startNewActivity(name, description, playlist)
+                        onStartRecording(playlist.id) 
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = name.isNotBlank() && selectedPlaylistId != null
             ) {

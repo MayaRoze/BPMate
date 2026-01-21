@@ -22,6 +22,19 @@ class PlaybackViewModel : ViewModel() {
     private val _playedSongs = MutableStateFlow<List<PlayedSong>>(emptyList())
     val playedSongs = _playedSongs.asStateFlow()
 
+    // Activity Metadata
+    private val _activityName = MutableStateFlow("")
+    val activityName = _activityName.asStateFlow()
+
+    private val _activityDescription = MutableStateFlow("")
+    val activityDescription = _activityDescription.asStateFlow()
+
+    private val _playlistName = MutableStateFlow("")
+    val playlistName = _playlistName.asStateFlow()
+
+    private val _startTimeMillis = MutableStateFlow(0L)
+    val startTimeMillis = _startTimeMillis.asStateFlow()
+
     private var activityStartTime: Long = 0
 
     fun connectController(context: Context) {
@@ -43,7 +56,6 @@ class PlaybackViewModel : ViewModel() {
                     val artist = metadata.artist?.toString() ?: "Unknown Artist"
                     val timestamp = if (activityStartTime == 0L) 0L else System.currentTimeMillis() - activityStartTime
                     
-                    // Avoid duplicate entries for the exact same song at the exact same timestamp
                     val currentList = _playedSongs.value
                     if (currentList.lastOrNull()?.let { it.title == title && it.timestamp == timestamp } != true) {
                         _playedSongs.value = currentList + PlayedSong(title, artist, timestamp)
@@ -53,12 +65,32 @@ class PlaybackViewModel : ViewModel() {
         })
     }
 
+    /**
+     * Pre-sets activity metadata. The actual playback is usually started via setPlaylist
+     * once the Player (MediaController) is connected.
+     */
+    fun startNewActivity(name: String, description: String, playlist: Playlist) {
+        _activityName.value = name
+        _activityDescription.value = description
+        _playlistName.value = playlist.name
+        _startTimeMillis.value = System.currentTimeMillis()
+        
+        // Try to start immediately if already connected
+        setPlaylist(playlist)
+    }
+
     fun setPlaylist(playlist: Playlist) {
         val player = _player.value ?: return
         
-        // Reset state BEFORE triggering transitions
+        // Reset playback tracking state
         activityStartTime = System.currentTimeMillis()
         _playedSongs.value = emptyList()
+        
+        // Ensure playlist name is set even if startNewActivity wasn't called
+        if (_playlistName.value.isBlank()) {
+            _playlistName.value = playlist.name
+            _startTimeMillis.value = System.currentTimeMillis()
+        }
 
         val mediaItems = playlist.songs.map { song ->
             MediaItem.Builder()

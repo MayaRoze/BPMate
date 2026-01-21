@@ -17,6 +17,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bpmate.playback.PlaybackViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,6 +28,13 @@ fun AnalysisScreen(
     playbackViewModel: PlaybackViewModel = viewModel()
 ) {
     val playedSongs by playbackViewModel.playedSongs.collectAsState()
+    val activityName by playbackViewModel.activityName.collectAsState()
+    val activityDescription by playbackViewModel.activityDescription.collectAsState()
+    val playlistName by playbackViewModel.playlistName.collectAsState()
+    val startTimeMillis by playbackViewModel.startTimeMillis.collectAsState()
+
+    val dateFormatter = SimpleDateFormat("MMM dd, yyyy - HH:mm", Locale.getDefault())
+    val startDateString = if (startTimeMillis > 0) dateFormatter.format(Date(startTimeMillis)) else ""
 
     Scaffold(
         topBar = {
@@ -47,15 +57,33 @@ fun AnalysisScreen(
         ) {
             item {
                 Text(
-                    text = "Activity Summary",
+                    text = activityName.ifBlank { "Activity Summary" },
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                val totalDuration = if (playedSongs.isNotEmpty()) {
-                    formatTime(playedSongs.last().timestamp)
-                } else "0:00"
-                Text("Total Duration: $totalDuration", style = MaterialTheme.typography.bodyMedium)
+                if (activityDescription.isNotBlank()) {
+                    Text(
+                        text = activityDescription,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("Date: $startDateString", style = MaterialTheme.typography.bodyMedium)
+                        Text("Playlist: $playlistName", style = MaterialTheme.typography.bodyMedium)
+                        val totalDuration = if (playedSongs.isNotEmpty()) {
+                            formatTime(playedSongs.last().timestamp)
+                        } else "0:00"
+                        Text("Total Duration: $totalDuration", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
             }
 
             item {
@@ -64,7 +92,7 @@ fun AnalysisScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(160.dp)
                         .clip(MaterialTheme.shapes.medium)
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
