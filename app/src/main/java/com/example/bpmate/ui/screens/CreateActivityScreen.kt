@@ -11,19 +11,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateActivityScreen(
-    onStartRecording: () -> Unit,
-    onBack: () -> Unit
+    onStartRecording: (String) -> Unit,
+    onBack: () -> Unit,
+    playlistViewModel: PlaylistViewModel = viewModel()
 ) {
     var name by remember { mutableStateOf("") }
-    var playlist by remember { mutableStateOf("Select Spotify Playlist") }
+    var selectedPlaylistName by remember { mutableStateOf("Select Playlist") }
+    var selectedPlaylistId by remember { mutableStateOf<String?>(null) }
     var movementMode by remember { mutableStateOf("Walk/Run") }
     var description by remember { mutableStateOf("") }
     var showPlaylistDialog by remember { mutableStateOf(false) }
 
+    val playlists by playlistViewModel.playlists.collectAsState()
     val movementOptions = listOf("Walk/Run", "Drive")
 
     Scaffold(
@@ -60,7 +64,7 @@ fun CreateActivityScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(playlist, modifier = Modifier.weight(1.0f))
+                    Text(selectedPlaylistName, modifier = Modifier.weight(1.0f))
                 }
             }
 
@@ -103,9 +107,9 @@ fun CreateActivityScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = onStartRecording,
+                onClick = { selectedPlaylistId?.let { onStartRecording(it) } },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank() && selectedPlaylistId != null
             ) {
                 Text("Start Recording")
             }
@@ -117,21 +121,26 @@ fun CreateActivityScreen(
             onDismissRequest = { showPlaylistDialog = false },
             confirmButton = {
                 TextButton(onClick = { showPlaylistDialog = false }) {
-                    Text("Close")
+                    Text("Cancel")
                 }
             },
             title = { Text("Select Playlist") },
             text = {
-                Column {
-                    listOf("Morning Run", "Daily Mix 1", "Workout Beats").forEach { item ->
-                        TextButton(
-                            onClick = {
-                                playlist = item
-                                showPlaylistDialog = false
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(item)
+                if (playlists.isEmpty()) {
+                    Text("No playlists found. Create one in 'Manage Playlists'.")
+                } else {
+                    Column {
+                        playlists.forEach { playlist ->
+                            TextButton(
+                                onClick = {
+                                    selectedPlaylistName = playlist.name
+                                    selectedPlaylistId = playlist.id
+                                    showPlaylistDialog = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("${playlist.name} (${playlist.songs.size} songs)")
+                            }
                         }
                     }
                 }

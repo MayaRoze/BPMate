@@ -5,9 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.bpmate.ui.screens.*
 import com.example.bpmate.ui.theme.BPMateTheme
 
@@ -42,12 +44,19 @@ fun BPMateApp() {
         }
         composable("create_activity") {
             CreateActivityScreen(
-                onStartRecording = { navController.navigate("player") },
+                onStartRecording = { playlistId -> 
+                    navController.navigate("player/$playlistId") 
+                },
                 onBack = { navController.popBackStack() }
             )
         }
-        composable("player") {
+        composable(
+            "player/{playlistId}",
+            arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
             PlayerScreen(
+                playlistId = playlistId,
                 onFinishActivity = { navController.navigate("analysis") },
                 onBack = { navController.popBackStack() }
             )

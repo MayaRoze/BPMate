@@ -1,5 +1,6 @@
 package com.example.bpmate.ui.screens
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -15,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -24,6 +26,7 @@ fun PlaylistManagementScreen(
     onBack: () -> Unit,
     viewModel: PlaylistViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val playlists by viewModel.playlists.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
     var selectedPlaylistId by remember { mutableStateOf<String?>(null) }
@@ -34,6 +37,12 @@ fun PlaylistManagementScreen(
         contract = ActivityResultContracts.OpenMultipleDocuments(),
         onResult = { uris ->
             selectedPlaylistId?.let { id ->
+                uris.forEach { uri ->
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
                 viewModel.addSongsToPlaylist(id, uris)
             }
         }
