@@ -14,3 +14,16 @@ data class Playlist(
     val name: String,
     val songs: List<Song> = emptyList()
 )
+
+data class PlayedSong(
+    val title: String,
+    val artist: String,
+    val timestamp: Long // Relative to activity start in ms
+)
+
+data class ActivitySession(
+    val id: String,
+    val playlistId: String,
+    val startTime: Long,
+    val playedSongs: List<PlayedSong>
+)

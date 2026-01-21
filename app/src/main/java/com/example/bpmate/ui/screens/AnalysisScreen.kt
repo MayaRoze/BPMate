@@ -8,18 +8,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.bpmate.playback.PlaybackViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalysisScreen(
-    onDone: () -> Unit
+    onDone: () -> Unit,
+    playbackViewModel: PlaybackViewModel = viewModel()
 ) {
+    val playedSongs by playbackViewModel.playedSongs.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -41,24 +47,20 @@ fun AnalysisScreen(
         ) {
             item {
                 Text(
-                    text = "Morning Run",
+                    text = "Activity Summary",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = "A quick run around the park.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Duration: 25:34", style = MaterialTheme.typography.bodyMedium)
-                Text("Mode: Walk/Run", style = MaterialTheme.typography.bodyMedium)
+                val totalDuration = if (playedSongs.isNotEmpty()) {
+                    formatTime(playedSongs.last().timestamp)
+                } else "0:00"
+                Text("Total Duration: $totalDuration", style = MaterialTheme.typography.bodyMedium)
             }
 
             item {
                 Text("Performance Graph", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(8.dp))
-                // Placeholder for Graph
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -67,7 +69,7 @@ fun AnalysisScreen(
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Cadence/Speed Graph Placeholder", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Cadence Graph Placeholder", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -75,13 +77,19 @@ fun AnalysisScreen(
                 Text("Song History", style = MaterialTheme.typography.titleLarge)
             }
 
-            items(songHistory) { song ->
-                ListItem(
-                    headlineContent = { Text(song.title) },
-                    supportingContent = { Text(song.artist) },
-                    trailingContent = { Text(song.time) }
-                )
-                HorizontalDivider()
+            if (playedSongs.isEmpty()) {
+                item {
+                    Text("No songs played during this activity.", style = MaterialTheme.typography.bodyMedium)
+                }
+            } else {
+                items(playedSongs) { song ->
+                    ListItem(
+                        headlineContent = { Text(song.title) },
+                        supportingContent = { Text(song.artist) },
+                        trailingContent = { Text(formatTime(song.timestamp)) }
+                    )
+                    HorizontalDivider()
+                }
             }
 
             item {
@@ -96,12 +104,9 @@ fun AnalysisScreen(
     }
 }
 
-data class SongInfo(val title: String, val artist: String, val time: String)
-
-val songHistory = listOf(
-    SongInfo("Walking on Sunshine", "Katrina & The Waves", "0:00"),
-    SongInfo("Eye of the Tiger", "Survivor", "3:58"),
-    SongInfo("Run to the Hills", "Iron Maiden", "8:05"),
-    SongInfo("Born to Run", "Bruce Springsteen", "12:00"),
-    SongInfo("Fast Car", "Tracy Chapman", "16:45")
-)
+private fun formatTime(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%d:%02d".format(minutes, seconds)
+}
