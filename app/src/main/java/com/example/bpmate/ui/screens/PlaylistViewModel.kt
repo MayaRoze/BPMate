@@ -11,6 +11,7 @@ import com.example.bpmate.data.local.AppDatabase
 import com.example.bpmate.data.local.PlaylistEntity
 import com.example.bpmate.data.local.SongEntity
 import com.example.bpmate.data.local.ActivityWithPlayedSongs
+import com.example.bpmate.data.local.ActivityEntity
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -55,6 +56,12 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
     fun deletePlaylist(playlistId: String, name: String) {
         viewModelScope.launch {
             dao.deletePlaylist(PlaylistEntity(playlistId, name))
+        }
+    }
+
+    fun deleteActivity(activity: ActivityEntity) {
+        viewModelScope.launch {
+            dao.deleteActivity(activity)
         }
     }
 

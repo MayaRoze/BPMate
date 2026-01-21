@@ -32,6 +32,9 @@ interface PlaylistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertActivity(activity: ActivityEntity)
 
+    @Delete
+    suspend fun deleteActivity(activity: ActivityEntity)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlayedSongs(songs: List<PlayedSongEntity>)
 }
