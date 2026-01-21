@@ -30,7 +30,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun BPMateApp() {
     val navController = rememberNavController()
-    // Create a shared PlaybackViewModel scoped to the Activity/App level
     val playbackViewModel: PlaybackViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = "home") {
@@ -51,7 +50,8 @@ fun BPMateApp() {
                 onStartRecording = { playlistId -> 
                     navController.navigate("player/$playlistId") 
                 },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                playbackViewModel = playbackViewModel
             )
         }
         composable(
@@ -66,18 +66,29 @@ fun BPMateApp() {
                 playbackViewModel = playbackViewModel
             )
         }
-        composable("analysis") {
+        composable(
+            "analysis?activityId={activityId}",
+            arguments = listOf(navArgument("activityId") { 
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null 
+            })
+        ) { backStackEntry ->
+            val activityId = backStackEntry.arguments?.getString("activityId")
             AnalysisScreen(
-                onDone = { navController.navigate("home") {
-                    popUpTo("home") { inclusive = true }
-                } },
+                activityId = activityId,
+                onDone = { 
+                    navController.navigate("home") {
+                        popUpTo("home") { inclusive = true }
+                    } 
+                },
                 playbackViewModel = playbackViewModel
             )
         }
         composable("history") {
             HistoryScreen(
                 onActivityClick = { activityId ->
-                    navController.navigate("analysis")
+                    navController.navigate("analysis?activityId=$activityId")
                 },
                 onBack = { navController.popBackStack() }
             )

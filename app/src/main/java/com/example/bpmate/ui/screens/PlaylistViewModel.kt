@@ -10,6 +10,7 @@ import com.example.bpmate.data.Song
 import com.example.bpmate.data.local.AppDatabase
 import com.example.bpmate.data.local.PlaylistEntity
 import com.example.bpmate.data.local.SongEntity
+import com.example.bpmate.data.local.ActivityWithPlayedSongs
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -32,6 +33,13 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
                 )
             }
         }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val activityHistory: StateFlow<List<ActivityWithPlayedSongs>> = dao.getAllActivities()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

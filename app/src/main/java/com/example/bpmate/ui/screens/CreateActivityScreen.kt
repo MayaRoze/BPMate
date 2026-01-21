@@ -112,7 +112,7 @@ fun CreateActivityScreen(
                 onClick = { 
                     val playlist = playlists.find { it.id == selectedPlaylistId }
                     if (playlist != null) {
-                        playbackViewModel.startNewActivity(name, description, playlist)
+                        playbackViewModel.startNewActivity(name, description, movementMode, playlist)
                         onStartRecording(playlist.id) 
                     }
                 },

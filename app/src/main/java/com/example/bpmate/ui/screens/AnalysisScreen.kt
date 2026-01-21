@@ -7,15 +7,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.bpmate.data.PlayedSong
+import com.example.bpmate.data.local.ActivityWithPlayedSongs
 import com.example.bpmate.playback.PlaybackViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -24,17 +24,44 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalysisScreen(
+    activityId: String? = null,
     onDone: () -> Unit,
-    playbackViewModel: PlaybackViewModel = viewModel()
+    playbackViewModel: PlaybackViewModel = viewModel(),
+    playlistViewModel: PlaylistViewModel = viewModel()
 ) {
-    val playedSongs by playbackViewModel.playedSongs.collectAsState()
-    val activityName by playbackViewModel.activityName.collectAsState()
-    val activityDescription by playbackViewModel.activityDescription.collectAsState()
-    val playlistName by playbackViewModel.playlistName.collectAsState()
-    val startTimeMillis by playbackViewModel.startTimeMillis.collectAsState()
+    // Collect state from ViewModel for current session
+    val currentPlayedSongs by playbackViewModel.playedSongs.collectAsState()
+    val currentName by playbackViewModel.activityName.collectAsState()
+    val currentDesc by playbackViewModel.activityDescription.collectAsState()
+    val currentPlaylist by playbackViewModel.playlistName.collectAsState()
+    val currentMode by playbackViewModel.activityMode.collectAsState()
+    val currentStartTime by playbackViewModel.startTimeMillis.collectAsState()
+
+    // State for historical data if viewing from history
+    var historicalData by remember { mutableStateOf<ActivityWithPlayedSongs?>(null) }
+    val history by playlistViewModel.activityHistory.collectAsState()
+
+    // Determine which data to show
+    LaunchedEffect(activityId, history) {
+        if (activityId != null) {
+            historicalData = history.find { it.activity.id == activityId }
+        }
+    }
+
+    val displaySongs = if (activityId != null) {
+        historicalData?.playedSongs?.map { PlayedSong(it.title, it.artist, it.timestamp) } ?: emptyList()
+    } else {
+        currentPlayedSongs
+    }
+
+    val displayName = if (activityId != null) historicalData?.activity?.name ?: "" else currentName
+    val displayDesc = if (activityId != null) historicalData?.activity?.description ?: "" else currentDesc
+    val displayPlaylist = if (activityId != null) historicalData?.activity?.playlistName ?: "" else currentPlaylist
+    val displayMode = if (activityId != null) historicalData?.activity?.mode ?: "" else currentMode
+    val displayStartTime = if (activityId != null) historicalData?.activity?.startTime ?: 0L else currentStartTime
 
     val dateFormatter = SimpleDateFormat("MMM dd, yyyy - HH:mm", Locale.getDefault())
-    val startDateString = if (startTimeMillis > 0) dateFormatter.format(Date(startTimeMillis)) else ""
+    val startDateString = if (displayStartTime > 0) dateFormatter.format(Date(displayStartTime)) else ""
 
     Scaffold(
         topBar = {
@@ -57,13 +84,13 @@ fun AnalysisScreen(
         ) {
             item {
                 Text(
-                    text = activityName.ifBlank { "Activity Summary" },
+                    text = displayName.ifBlank { "Activity Summary" },
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
-                if (activityDescription.isNotBlank()) {
+                if (displayDesc.isNotBlank()) {
                     Text(
-                        text = activityDescription,
+                        text = displayDesc,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -77,9 +104,10 @@ fun AnalysisScreen(
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Text("Date: $startDateString", style = MaterialTheme.typography.bodyMedium)
-                        Text("Playlist: $playlistName", style = MaterialTheme.typography.bodyMedium)
-                        val totalDuration = if (playedSongs.isNotEmpty()) {
-                            formatTime(playedSongs.last().timestamp)
+                        Text("Mode: $displayMode", style = MaterialTheme.typography.bodyMedium)
+                        Text("Playlist: $displayPlaylist", style = MaterialTheme.typography.bodyMedium)
+                        val totalDuration = if (displaySongs.isNotEmpty()) {
+                            formatTime(displaySongs.last().timestamp)
                         } else "0:00"
                         Text("Total Duration: $totalDuration", style = MaterialTheme.typography.bodyMedium)
                     }
@@ -87,30 +115,15 @@ fun AnalysisScreen(
             }
 
             item {
-                Text("Performance Graph", style = MaterialTheme.typography.titleLarge)
-                Spacer(modifier = Modifier.height(8.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .clip(MaterialTheme.shapes.medium)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Cadence Graph Placeholder", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-
-            item {
                 Text("Song History", style = MaterialTheme.typography.titleLarge)
             }
 
-            if (playedSongs.isEmpty()) {
+            if (displaySongs.isEmpty()) {
                 item {
-                    Text("No songs played during this activity.", style = MaterialTheme.typography.bodyMedium)
+                    Text("No songs recorded for this activity.", style = MaterialTheme.typography.bodyMedium)
                 }
             } else {
-                items(playedSongs) { song ->
+                items(displaySongs) { song ->
                     ListItem(
                         headlineContent = { Text(song.title) },
                         supportingContent = { Text(song.artist) },
@@ -125,7 +138,7 @@ fun AnalysisScreen(
                     onClick = onDone,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Back to Home")
+                    Text("Back")
                 }
             }
         }

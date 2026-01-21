@@ -181,8 +181,9 @@ fun PlayerScreen(
 
             Button(
                 onClick = {
-                    playbackViewModel.stopPlayback()
-                    onFinishActivity()
+                    playbackViewModel.stopAndSaveActivity { activityId ->
+                        onFinishActivity()
+                    }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 modifier = Modifier.fillMaxWidth()

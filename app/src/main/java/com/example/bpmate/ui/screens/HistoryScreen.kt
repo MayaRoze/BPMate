@@ -8,16 +8,27 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     onActivityClick: (String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: PlaylistViewModel = viewModel()
 ) {
+    val history by viewModel.activityHistory.collectAsState()
+    val dateFormatter = SimpleDateFormat("MMM dd, yyyy - HH:mm", Locale.getDefault())
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -30,36 +41,44 @@ fun HistoryScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            items(historyData) { activity ->
-                ListItem(
-                    modifier = Modifier.clickable { onActivityClick(activity.id) },
-                    headlineContent = { Text(activity.name, fontWeight = FontWeight.Bold) },
-                    supportingContent = { Text("${activity.date} • ${activity.duration}") },
-                    trailingContent = { Text(activity.mode) }
-                )
-                HorizontalDivider()
+        if (history.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No activities recorded yet.")
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                items(history) { item ->
+                    val activity = item.activity
+                    ListItem(
+                        modifier = Modifier.clickable { onActivityClick(activity.id) },
+                        headlineContent = { Text(activity.name, fontWeight = FontWeight.Bold) },
+                        supportingContent = { 
+                            val dateString = dateFormatter.format(Date(activity.startTime))
+                            Text("$dateString • ${formatTime(activity.duration)}") 
+                        },
+                        trailingContent = { 
+                            Text(activity.playlistName, style = MaterialTheme.typography.bodySmall) 
+                        }
+                    )
+                    HorizontalDivider()
+                }
             }
         }
     }
 }
 
-data class ActivityHistoryItem(
-    val id: String,
-    val name: String,
-    val date: String,
-    val duration: String,
-    val mode: String
-)
-
-val historyData = listOf(
-    ActivityHistoryItem("1", "Morning Run", "Oct 24, 2023", "25:34", "Walk/Run"),
-    ActivityHistoryItem("2", "Commute to Work", "Oct 23, 2023", "45:10", "Drive"),
-    ActivityHistoryItem("3", "Evening Jog", "Oct 21, 2023", "30:15", "Walk/Run"),
-    ActivityHistoryItem("4", "Grocery Trip", "Oct 20, 2023", "15:20", "Drive"),
-    ActivityHistoryItem("5", "Weekend Hike", "Oct 19, 2023", "1:20:45", "Walk/Run")
-)
+private fun formatTime(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%d:%02d".format(minutes, seconds)
+}

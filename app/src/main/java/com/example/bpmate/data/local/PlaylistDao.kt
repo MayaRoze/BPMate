@@ -20,4 +20,18 @@ interface PlaylistDao {
 
     @Delete
     suspend fun deleteSong(song: SongEntity)
+
+    @Transaction
+    @Query("SELECT * FROM activities ORDER BY startTime DESC")
+    fun getAllActivities(): Flow<List<ActivityWithPlayedSongs>>
+
+    @Transaction
+    @Query("SELECT * FROM activities WHERE id = :activityId")
+    suspend fun getActivityById(activityId: String): ActivityWithPlayedSongs?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertActivity(activity: ActivityEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlayedSongs(songs: List<PlayedSongEntity>)
 }
