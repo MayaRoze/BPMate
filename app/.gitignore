@@ -5,7 +5,6 @@
 # Gradle files
 .gradle/
 build/
-build.gradle.kts
 
 # Local configuration file
 local.properties
