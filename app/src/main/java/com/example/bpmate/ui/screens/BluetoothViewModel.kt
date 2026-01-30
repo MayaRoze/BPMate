@@ -27,6 +27,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
+import kotlin.math.sqrt
 
 @SuppressLint("MissingPermission")
 class BluetoothViewModel(application: Application) : AndroidViewModel(application) {
@@ -43,9 +44,20 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
     private val _imuData = MutableStateFlow(IMU_Data())
     val imuData: StateFlow<IMU_Data> = _imuData
 
+    private val _cadence = MutableStateFlow(0f)
+    val cadence: StateFlow<Float> = _cadence
+
     private var bluetoothSocket: BluetoothSocket? = null
     private var inputStream: InputStream? = null
     private var outputStream: OutputStream? = null
+
+    // Step detection variables
+    private var lastMagnitude = 0f
+    private var lastStepTime = 0L
+    private val stepTimestamps = mutableListOf<Long>()
+    private val CADENCE_WINDOW_MS = 10000L // 10 seconds window for cadence calculation
+    private val STEP_THRESHOLD = 13.5f // Adjusted threshold for peak detection
+    private val STEP_COOLDOWN_MS = 250L // Minimum time between steps (~240 steps/min max)
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -86,7 +98,6 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
             _discoveredDevices.value = emptyList()
             val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
 
-            // Use RECEIVER_EXPORTED for system broadcasts like Bluetooth discovery
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 getApplication<Application>().registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
             } else {
@@ -135,9 +146,7 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
                 _connectionStatus.value = "Connected"
                 Log.d("BT_DEBUG", "Successfully connected to ${device?.address}")
 
-                // Automatically send START upon connection to be sure
                 sendCommand("START")
-
                 startDataStream()
             } catch (e: IOException) {
                 Log.e("BT_DEBUG", "Connection failed: ${e.message}")
@@ -148,12 +157,11 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun startDataStream() {
         viewModelScope.launch(Dispatchers.IO) {
-            val reader = inputStream?.bufferedReader() // Using a reader is much more stable
+            val reader = inputStream?.bufferedReader()
             while (true) {
                 try {
-                    val line = reader?.readLine() ?: break // Reads until \n automatically
+                    val line = reader?.readLine() ?: break
                     if (line.isNotEmpty()) {
-                        Log.d("BT_DATA", "Raw Line: $line") // Watch this in Logcat!
                         parseAndDisplayData(line)
                     }
                 } catch (e: IOException) {
@@ -166,31 +174,67 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private suspend fun parseAndDisplayData(line: String) {
-        // Clean the string: remove any \r or whitespace
         val cleanLine = line.trim()
         val values = cleanLine.split(",")
 
         if (values.size == 7) {
             try {
-                // Update the StateFlow on the Main thread to ensure UI sees it
+                val data = IMU_Data(
+                    timestamp = values[0].toFloatOrNull() ?: 0f,
+                    accelX = values[1].toFloatOrNull() ?: 0f,
+                    accelY = values[2].toFloatOrNull() ?: 0f,
+                    accelZ = values[3].toFloatOrNull() ?: 0f,
+                    gyroX = values[4].toFloatOrNull() ?: 0f,
+                    gyroY = values[5].toFloatOrNull() ?: 0f,
+                    gyroZ = values[6].toFloatOrNull() ?: 0f
+                )
+
                 withContext(Dispatchers.Main) {
-                    _imuData.value = IMU_Data(
-                        timestamp = values[0].toFloatOrNull() ?: 0f,
-                        accelX = values[1].toFloatOrNull() ?: 0f,
-                        accelY = values[2].toFloatOrNull() ?: 0f,
-                        accelZ = values[3].toFloatOrNull() ?: 0f,
-                        gyroX = values[4].toFloatOrNull() ?: 0f,
-                        gyroY = values[5].toFloatOrNull() ?: 0f,
-                        gyroZ = values[6].toFloatOrNull() ?: 0f
-                    )
+                    _imuData.value = data
+                    detectStep(data)
                 }
             } catch (e: Exception) {
                 Log.e("BT_DATA", "Parsing error: ${e.message}")
             }
-        } else {
-            Log.w("BT_DATA", "Wrong data format. Expected 7, got ${values.size}")
         }
     }
+
+    private fun detectStep(data: IMU_Data) {
+        val magnitude = sqrt(data.accelX * data.accelX + data.accelY * data.accelY + data.accelZ * data.accelZ)
+        val currentTime = System.currentTimeMillis()
+
+        // Simple peak detection: if magnitude cross threshold and then starts decreasing
+        if (magnitude > STEP_THRESHOLD && magnitude < lastMagnitude && (currentTime - lastStepTime) > STEP_COOLDOWN_MS) {
+            // We detected a peak
+            lastStepTime = currentTime
+            stepTimestamps.add(currentTime)
+            updateCadence(currentTime)
+        }
+        lastMagnitude = magnitude
+    }
+
+    private fun updateCadence(currentTime: Long) {
+        // Remove old steps outside the window
+        stepTimestamps.removeAll { it < currentTime - CADENCE_WINDOW_MS }
+
+        if (stepTimestamps.size < 2) {
+            _cadence.value = 0f
+            return
+        }
+
+        // Calculate steps per minute based on the window
+        // (number of steps / window duration in minutes)
+        // However, it's better to use the time between first and last step in window for better accuracy if many steps
+        val durationMs = stepTimestamps.last() - stepTimestamps.first()
+        if (durationMs > 0) {
+            val stepsCount = stepTimestamps.size - 1
+            val cadenceValue = (stepsCount.toFloat() / (durationMs.toFloat() / 60000f))
+            _cadence.value = cadenceValue
+        } else {
+            _cadence.value = 0f
+        }
+    }
+
     fun sendCommand(command: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {

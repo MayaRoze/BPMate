@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
 fun BPMateApp() {
     val navController = rememberNavController()
     val playbackViewModel: PlaybackViewModel = viewModel()
+    val bluetoothViewModel: BluetoothViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
@@ -64,7 +65,8 @@ fun BPMateApp() {
                 playlistId = playlistId,
                 onFinishActivity = { navController.navigate("analysis") },
                 onBack = { navController.popBackStack() },
-                playbackViewModel = playbackViewModel
+                playbackViewModel = playbackViewModel,
+                bluetoothViewModel = bluetoothViewModel
             )
         }
         composable(
@@ -95,7 +97,7 @@ fun BPMateApp() {
             )
         }
         composable("imu_debug") {
-            IMU_DebugScreen()
+            IMU_DebugScreen(bluetoothViewModel = bluetoothViewModel)
         }
     }
 }
