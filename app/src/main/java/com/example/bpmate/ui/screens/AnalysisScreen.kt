@@ -51,17 +51,16 @@ fun AnalysisScreen(
         }
     }
 
-    val displaySongs = if (activityId != null) {
-        historicalData?.playedSongs?.map { PlayedSong(it.title, it.artist, it.timestamp) } ?: emptyList()
-    } else {
-        currentPlayedSongs
-    }
+    // Use historical data if available, otherwise fallback to current session data
+    val displaySongs = historicalData?.playedSongs?.map { 
+        PlayedSong(it.title, it.artist, it.timestamp) 
+    } ?: currentPlayedSongs
 
-    val displayName = if (activityId != null) historicalData?.activity?.name ?: "" else currentName
-    val displayDesc = if (activityId != null) historicalData?.activity?.description ?: "" else currentDesc
-    val displayPlaylist = if (activityId != null) historicalData?.activity?.playlistName ?: "" else currentPlaylist
-    val displayMode = if (activityId != null) historicalData?.activity?.mode ?: "" else currentMode
-    val displayStartTime = if (activityId != null) historicalData?.activity?.startTime ?: 0L else currentStartTime
+    val displayName = (historicalData?.activity?.name ?: currentName).ifBlank { "Activity Summary" }
+    val displayDesc = historicalData?.activity?.description ?: currentDesc
+    val displayPlaylist = historicalData?.activity?.playlistName ?: currentPlaylist
+    val displayMode = historicalData?.activity?.mode ?: currentMode
+    val displayStartTime = historicalData?.activity?.startTime ?: currentStartTime
 
     val dateFormatter = SimpleDateFormat("MMM dd, yyyy - HH:mm", Locale.getDefault())
     val startDateString = if (displayStartTime > 0) dateFormatter.format(Date(displayStartTime)) else ""
@@ -87,7 +86,7 @@ fun AnalysisScreen(
         ) {
             item {
                 Text(
-                    text = displayName.ifBlank { "Activity Summary" },
+                    text = displayName,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -95,11 +94,12 @@ fun AnalysisScreen(
                     Text(
                         text = displayDesc,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -118,7 +118,12 @@ fun AnalysisScreen(
             }
 
             item {
-                Text("Song History", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    text = "Song History", 
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
 
             if (displaySongs.isEmpty()) {
@@ -137,11 +142,12 @@ fun AnalysisScreen(
             }
 
             item {
+                Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = onDone,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Back")
+                    Text("Back to Home")
                 }
             }
         }

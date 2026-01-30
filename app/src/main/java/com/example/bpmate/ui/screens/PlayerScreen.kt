@@ -1,8 +1,9 @@
 package com.example.bpmate.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MusicNote
@@ -19,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
 import com.example.bpmate.playback.PlaybackViewModel
 
@@ -26,22 +28,29 @@ import com.example.bpmate.playback.PlaybackViewModel
 @Composable
 fun PlayerScreen(
     playlistId: String,
-    onFinishActivity: () -> Unit,
+    onFinishActivity: (String) -> Unit,
     onBack: () -> Unit,
-    playlistViewModel: PlaylistViewModel,
-    playbackViewModel: PlaybackViewModel,
-    bluetoothViewModel: BluetoothViewModel
+    playlistViewModel: PlaylistViewModel = viewModel(),
+    playbackViewModel: PlaybackViewModel = viewModel(),
+    bluetoothViewModel: BluetoothViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val playlists by playlistViewModel.playlists.collectAsState()
     val player by playbackViewModel.player.collectAsState()
     val cadence by bluetoothViewModel.cadence.collectAsState()
+    val connectionStatus by bluetoothViewModel.connectionStatus.collectAsState()
     
     var currentTitle by remember { mutableStateOf("Not Playing") }
     var currentArtist by remember { mutableStateOf("") }
     var isPlaying by remember { mutableStateOf(false) }
     var position by remember { mutableStateOf(0L) }
     var duration by remember { mutableStateOf(0L) }
+
+    // Handle system back button
+    BackHandler {
+        playbackViewModel.stopPlayback()
+        onBack()
+    }
 
     // Connect to playback service and load playlist
     LaunchedEffect(Unit) {
@@ -65,6 +74,16 @@ fun PlayerScreen(
     // Update UI based on player state
     LaunchedEffect(player) {
         val p = player ?: return@LaunchedEffect
+        
+        // Initial UI sync
+        val updateMetadata = {
+            currentTitle = p.mediaMetadata.title?.toString() ?: "Unknown"
+            currentArtist = p.mediaMetadata.artist?.toString() ?: "Unknown Artist"
+            isPlaying = p.isPlaying
+            duration = p.duration.coerceAtLeast(0L)
+        }
+        updateMetadata()
+
         val listener = object : Player.Listener {
             override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) {
                 currentTitle = mediaMetadata.title?.toString() ?: "Unknown"
@@ -99,8 +118,23 @@ fun PlayerScreen(
             TopAppBar(
                 title = { Text("Recording Activity") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        playbackViewModel.stopPlayback()
+                        onBack()
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            playbackViewModel.stopAndSaveActivity { activityId ->
+                                onFinishActivity(activityId)
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("STOP", fontWeight = FontWeight.Bold)
                     }
                 }
             )
@@ -110,15 +144,15 @@ fun PlayerScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Cadence Display
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+                modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
                 )
@@ -145,8 +179,19 @@ fun PlayerScreen(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
+                    
+                    if (connectionStatus != "Connected") {
+                        Text(
+                            text = "Sensor: $connectionStatus",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
 
             Box(
                 modifier = Modifier
@@ -228,20 +273,6 @@ fun PlayerScreen(
                 IconButton(onClick = { playbackViewModel.skipToBestMatch() }) {
                     Icon(Icons.Default.SkipNext, contentDescription = "Next (Auto-BPM)", modifier = Modifier.size(40.dp))
                 }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Button(
-                onClick = {
-                    playbackViewModel.stopAndSaveActivity { activityId ->
-                        onFinishActivity()
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Stop and Save Activity")
             }
         }
     }

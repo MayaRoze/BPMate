@@ -58,16 +58,20 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
         controllerFuture?.addListener({
-            val p = controllerFuture?.get()
-            _player.value = p
-            setupMediaListener(p)
+            try {
+                val p = controllerFuture?.get()
+                _player.value = p
+                setupMediaListener(p)
+            } catch (e: Exception) {
+                Log.e("PlaybackViewModel", "Failed to connect controller", e)
+            }
         }, MoreExecutors.directExecutor())
     }
 
     private fun setupMediaListener(player: Player?) {
         player?.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                // When a song starts (either auto or manual), we immediately prepare the NEXT one
+                // When a song starts, prepare the NEXT one optimally
                 pickNextSongBasedOnCadence()
 
                 mediaItem?.mediaMetadata?.let { metadata ->
@@ -85,46 +89,58 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun updateCadence(cadence: Float) {
-        // If cadence changes significantly (more than 5 steps/min), re-pick the next song
-        if (abs(currentCadence - cadence) > 5f) {
-            currentCadence = cadence
+        val oldCadence = currentCadence
+        currentCadence = cadence
+        
+        // If cadence changes significantly, re-pick the next song in queue
+        if (abs(oldCadence - cadence) > 5f) {
             pickNextSongBasedOnCadence()
-        } else {
-            currentCadence = cadence
         }
     }
 
     fun skipToBestMatch() {
         val p = _player.value ?: return
         val playlist = currentPlaylist ?: return
-        if (playlist.songs.isEmpty()) return
-
-        val targetBpm = if (currentCadence > 0) currentCadence.toInt() else return
         
-        // Find best song excluding current if possible
+        if (playlist.songs.isEmpty()) {
+            p.seekToNextMediaItem()
+            return
+        }
+
+        // Fallback to normal skip if cadence is 0 or no suitable song found
+        if (currentCadence <= 0) {
+            p.seekToNextMediaItem()
+            return
+        }
+
+        val targetBpm = currentCadence.toInt()
         val currentMediaId = p.currentMediaItem?.mediaId
         val bestSong = playlist.songs
             .filter { it.id != currentMediaId }
             .minByOrNull { abs(it.bpm - targetBpm) } 
-            ?: playlist.songs.minByOrNull { abs(it.bpm - targetBpm) } ?: return
+            ?: playlist.songs.minByOrNull { abs(it.bpm - targetBpm) }
 
-        val index = playlist.songs.indexOf(bestSong)
-        if (index != -1) {
-            p.seekTo(index, 0L)
-            Log.d("PlaybackViewModel", "Manually skipped to best match: ${bestSong.title} (BPM: ${bestSong.bpm})")
+        if (bestSong != null) {
+            val index = playlist.songs.indexOf(bestSong)
+            if (index != -1) {
+                p.seekTo(index, 0L)
+                Log.d("PlaybackViewModel", "Manually skipped to best match: ${bestSong.title} (BPM: ${bestSong.bpm})")
+            } else {
+                p.seekToNextMediaItem()
+            }
+        } else {
+            p.seekToNextMediaItem()
         }
     }
 
     private fun pickNextSongBasedOnCadence() {
         val p = _player.value ?: return
         val playlist = currentPlaylist ?: return
-        if (playlist.songs.isEmpty()) return
+        if (playlist.songs.isEmpty() || currentCadence <= 0) return
 
         val targetBpm = currentCadence.toInt()
-        if (targetBpm <= 0) return
-
-        // Pick next song that is NOT the current one to be queued
         val currentMediaId = p.currentMediaItem?.mediaId
+        
         val nextSong = playlist.songs
             .filter { it.id != currentMediaId }
             .minByOrNull { abs(it.bpm - targetBpm) } ?: return
@@ -176,7 +192,7 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
         player.prepare()
         player.play()
         
-        // Seek to best starting song based on current cadence
+        // Seek to best starting song
         if (currentCadence > 0) {
             val targetBpm = currentCadence.toInt()
             val bestStartIndex = playlist.songs.indexOf(playlist.songs.minByOrNull { abs(it.bpm - targetBpm) })
@@ -185,8 +201,14 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
             }
         }
         
-        // Ensure the NEXT one in queue is also set optimally
         pickNextSongBasedOnCadence()
+    }
+
+    fun stopPlayback() {
+        val player = _player.value ?: return
+        player.stop()
+        player.clearMediaItems()
+        currentPlaylist = null
     }
 
     fun stopAndSaveActivity(onSaved: (String) -> Unit) {
