@@ -3,6 +3,7 @@ package com.example.bpmate.ui.screens
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,14 +19,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.bpmate.R
 import com.example.bpmate.data.Song
+import com.example.bpmate.ui.theme.TranslucentDarkCyan
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,123 +60,149 @@ fun PlaylistManagementScreen(
         }
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(selectedPlaylist?.name ?: "My Playlists") },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (selectedPlaylistId != null) {
-                            selectedPlaylistId = null
-                        } else {
-                            onBack()
-                        }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            if (selectedPlaylistId == null) {
-                FloatingActionButton(onClick = { showCreateDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Create Playlist")
-                }
-            } else {
-                FloatingActionButton(onClick = { pickAudioLauncher.launch(arrayOf("audio/*")) }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Songs")
-                }
-            }
-        }
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                if (selectedPlaylistId == null) {
-                    if (playlists.isEmpty()) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No playlists yet. Tap + to create one.")
-                        }
-                    } else {
-                        LazyColumn {
-                            items(playlists) { playlist ->
-                                ListItem(
-                                    headlineContent = { Text(playlist.name, fontWeight = FontWeight.Bold) },
-                                    supportingContent = { Text("${playlist.songs.size} songs") },
-                                    trailingContent = {
-                                        IconButton(onClick = {
-                                            viewModel.deletePlaylist(playlist.id, playlist.name)
-                                        }) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Delete Playlist")
-                                        }
-                                    },
-                                    modifier = Modifier.clickable { selectedPlaylistId = playlist.id }
-                                )
-                                HorizontalDivider()
+    Box(modifier = Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(id = R.drawable.background_home),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text(selectedPlaylist?.name ?: "My Playlists", fontWeight = FontWeight.Bold, color = Color.White) },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (selectedPlaylistId != null) {
+                                selectedPlaylistId = null
+                            } else {
+                                onBack()
                             }
+                        }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = TranslucentDarkCyan.copy(alpha = 0.6f))
+                )
+            },
+            floatingActionButton = {
+                if (selectedPlaylistId == null) {
+                    FloatingActionButton(onClick = { showCreateDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "Create Playlist")
                     }
                 } else {
-                    selectedPlaylist?.let { playlist ->
-                        if (playlist.songs.isEmpty()) {
+                    FloatingActionButton(onClick = { pickAudioLauncher.launch(arrayOf("audio/*")) }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Songs")
+                    }
+                }
+            }
+        ) { padding ->
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (selectedPlaylistId == null) {
+                        if (playlists.isEmpty()) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("No songs in this playlist. Tap + to add some.")
+                                Surface(
+                                    color = TranslucentDarkCyan.copy(alpha = 0.6f),
+                                    shape = MaterialTheme.shapes.medium
+                                ) {
+                                    Text("No playlists yet. Tap + to create one.", modifier = Modifier.padding(16.dp), color = Color.White)
+                                }
                             }
                         } else {
-                            LazyColumn {
-                                items(playlist.songs) { song ->
-                                    ListItem(
-                                        headlineContent = { Text(song.title) },
-                                        supportingContent = { Text(song.artist) },
-                                        leadingContent = {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.clickable { editingSong = song }
-                                            ) {
-                                                Icon(Icons.Default.MusicNote, contentDescription = null)
-                                                Spacer(Modifier.width(8.dp))
-                                                Text("${song.bpm} BPM")
-                                                Icon(
-                                                    Icons.Default.Edit,
-                                                    contentDescription = "Edit BPM",
-                                                    modifier = Modifier.size(16.dp).padding(start = 4.dp),
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                        },
-                                        trailingContent = {
-                                            IconButton(onClick = {
-                                                viewModel.removeSong(
-                                                    song.id,
-                                                    playlist.id,
-                                                    song.title,
-                                                    song.artist,
-                                                    song.uri.toString(),
-                                                    song.bpm
-                                                )
-                                            }) {
-                                                Icon(Icons.Default.Delete, contentDescription = "Remove")
-                                            }
+                            LazyColumn(
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(playlists) { playlist ->
+                                    Surface(
+                                        color = TranslucentDarkCyan.copy(alpha = 0.6f),
+                                        shape = MaterialTheme.shapes.medium,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        ListItem(
+                                            headlineContent = { Text(playlist.name, fontWeight = FontWeight.Bold, color = Color.White) },
+                                            supportingContent = { Text("${playlist.songs.size} songs", color = Color.White.copy(alpha = 0.7f)) },
+                                            trailingContent = {
+                                                IconButton(onClick = {
+                                                    viewModel.deletePlaylist(playlist.id, playlist.name)
+                                                }) {
+                                                    Icon(Icons.Default.Delete, contentDescription = "Delete Playlist", tint = Color.White)
+                                                }
+                                            },
+                                            modifier = Modifier.clickable { selectedPlaylistId = playlist.id },
+                                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        selectedPlaylist?.let { playlist ->
+                            if (playlist.songs.isEmpty()) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Surface(
+                                        color = TranslucentDarkCyan.copy(alpha = 0.6f),
+                                        shape = MaterialTheme.shapes.medium
+                                    ) {
+                                        Text("No songs in this playlist. Tap + to add some.", modifier = Modifier.padding(16.dp), color = Color.White)
+                                    }
+                                }
+                            } else {
+                                LazyColumn(
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(playlist.songs) { song ->
+                                        Surface(
+                                            color = TranslucentDarkCyan.copy(alpha = 0.6f),
+                                            shape = MaterialTheme.shapes.medium,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            ListItem(
+                                                headlineContent = { Text(song.title, color = Color.White) },
+                                                supportingContent = { Text(song.artist, color = Color.White.copy(alpha = 0.7f)) },
+                                                leadingContent = {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier.clickable { editingSong = song }
+                                                    ) {
+                                                        Icon(Icons.Default.MusicNote, contentDescription = null, tint = Color.White)
+                                                        Spacer(Modifier.width(8.dp))
+                                                        Text("${song.bpm} BPM", color = Color.White)
+                                                        Icon(
+                                                            Icons.Default.Edit,
+                                                            contentDescription = "Edit BPM",
+                                                            modifier = Modifier.size(16.dp).padding(start = 4.dp),
+                                                            tint = MaterialTheme.colorScheme.primary
+                                                        )
+                                                    }
+                                                },
+                                                trailingContent = {
+                                                    IconButton(onClick = {
+                                                        viewModel.removeSong(
+                                                            song.id,
+                                                            playlist.id,
+                                                            song.title,
+                                                            song.artist,
+                                                            song.uri.toString(),
+                                                            song.bpm
+                                                        )
+                                                    }) {
+                                                        Icon(Icons.Default.Delete, contentDescription = "Remove", tint = Color.White)
+                                                    }
+                                                },
+                                                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                                            )
                                         }
-                                    )
-                                    HorizontalDivider()
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
-            if (selectedPlaylistId == null) {
-                val uriHandler = LocalUriHandler.current
-                Text(
-                    text = "BPM data provided by getsongbpm.com",
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                        .clickable { uriHandler.openUri("https://getsongbpm.com") },
-                    style = MaterialTheme.typography.bodySmall,
-                    textDecoration = TextDecoration.Underline,
-                    color = MaterialTheme.colorScheme.primary
-                )
             }
         }
     }

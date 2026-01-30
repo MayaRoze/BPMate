@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import com.example.bpmate.R
+import com.example.bpmate.ui.theme.TranslucentDarkCyan
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,16 +28,15 @@ fun HomeScreen(
             painter = painterResource(id = R.drawable.background_home),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            alpha = 1f
+            contentScale = ContentScale.Crop
         )
 
         Scaffold(
-            containerColor = Color.Transparent, // Make Scaffold transparent to see background
+            containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
-                    title = { Text("BPMate", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                    title = { Text("BPMate", fontWeight = FontWeight.Bold, color = Color.White) },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = TranslucentDarkCyan.copy(alpha = 0.6f))
                 )
             }
         ) { padding ->
@@ -51,11 +51,11 @@ fun HomeScreen(
                     text = "Welcome to BPMate",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Color.White
                 )
+                
                 Spacer(modifier = Modifier.height(32.dp))
                 
-                // Primary action: High emphasis
                 Button(
                     onClick = onStartNewActivity,
                     modifier = Modifier.fillMaxWidth(0.7f),
@@ -66,11 +66,9 @@ fun HomeScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Secondary actions: Medium emphasis with semi-transparent background
-                // Content color set to a solid, opaque onSurface color
                 val secondaryButtonColors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f),
-                    contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 1f)
+                    containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f),
+                    contentColor = Color.White
                 )
 
                 Button(
@@ -81,8 +79,8 @@ fun HomeScreen(
                     Text(
                         text = "Manage Playlists",
                         style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.onSurface
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                     )
                 }
@@ -97,8 +95,8 @@ fun HomeScreen(
                     Text(
                         text = "Activity History",
                         style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.onSurface
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                     )
                 }
@@ -113,8 +111,8 @@ fun HomeScreen(
                     Text(
                         text = "IMU Debug",
                         style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.onSurface
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                     )
                 }

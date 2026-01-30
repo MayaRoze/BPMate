@@ -20,18 +20,21 @@ val CyanOnTertiary = Color(0xFFFFFFFF)
 val CyanContainer = Color(0xFFAFEFFF)
 val CyanOnContainer = Color(0xFF001F26)
 
-// Dark Theme Colors - Adjusted for more vibrancy and less "brown" tones
+// Dark Theme Colors
 val PeachPrimaryDark = Color(0xFFFFB38A)
 val PeachOnPrimaryDark = Color(0xFF5A2C00)
-val PeachContainerDark = Color(0xFF72361D) // Adjusted to be more "warm peach" than brown
+val PeachContainerDark = Color(0xFF72361D)
 val PeachOnContainerDark = Color(0xFFFFDBCB)
 
 val PinkSecondaryDark = Color(0xFFFFB2C2)
 val PinkOnSecondaryDark = Color(0xFF670027)
-val PinkContainerDark = Color(0xFF702A3B) // Richer pink container
+val PinkContainerDark = Color(0xFF702A3B)
 val PinkOnContainerDark = Color(0xFFFFD9E2)
 
 val CyanTertiaryDark = Color(0xFF55D6F3)
 val CyanOnTertiaryDark = Color(0xFF003640)
-val CyanContainerDark = Color(0xFF004E5C) // Deep Cyan
+val CyanContainerDark = Color(0xFF004E5C)
 val CyanOnContainerDark = Color(0xFFAFEFFF)
+
+// Overlay Colors - More saturated dark cyan
+val TranslucentDarkCyan = Color(0xFF004E5C)

@@ -99,7 +99,10 @@ fun BPMateApp() {
             )
         }
         composable("imu_debug") {
-            IMU_DebugScreen(bluetoothViewModel = bluetoothViewModel)
+            IMU_DebugScreen(
+                onBack = { navController.popBackStack() },
+                bluetoothViewModel = bluetoothViewModel
+            )
         }
     }
 }
