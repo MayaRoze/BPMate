@@ -19,7 +19,9 @@ data class Playlist(
 data class PlayedSong(
     val title: String,
     val artist: String,
-    val timestamp: Long // Relative to activity start in ms
+    val timestamp: Long, // Relative to activity start in ms
+    val bpm: Int = 0,
+    val cadence: Int = 0
 )
 
 data class ActivitySession(

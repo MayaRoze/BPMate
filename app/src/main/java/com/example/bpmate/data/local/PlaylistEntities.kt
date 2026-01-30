@@ -68,7 +68,9 @@ data class PlayedSongEntity(
     val activityId: String,
     val title: String,
     val artist: String,
-    val timestamp: Long
+    val timestamp: Long,
+    val bpm: Int = 0,
+    val cadence: Int = 0
 )
 
 data class ActivityWithPlayedSongs(

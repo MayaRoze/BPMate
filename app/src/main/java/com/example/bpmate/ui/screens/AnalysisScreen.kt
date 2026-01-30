@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bpmate.data.PlayedSong
 import com.example.bpmate.data.local.ActivityWithPlayedSongs
@@ -53,7 +54,13 @@ fun AnalysisScreen(
 
     // Use historical data if available, otherwise fallback to current session data
     val displaySongs = historicalData?.playedSongs?.map { 
-        PlayedSong(it.title, it.artist, it.timestamp) 
+        PlayedSong(
+            title = it.title, 
+            artist = it.artist, 
+            timestamp = it.timestamp,
+            bpm = it.bpm,
+            cadence = it.cadence
+        ) 
     } ?: currentPlayedSongs
 
     val displayName = (historicalData?.activity?.name ?: currentName).ifBlank { "Activity Summary" }
@@ -134,7 +141,24 @@ fun AnalysisScreen(
                 items(displaySongs) { song ->
                     ListItem(
                         headlineContent = { Text(song.title) },
-                        supportingContent = { Text(song.artist) },
+                        supportingContent = { 
+                            Column {
+                                Text(song.artist)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    SuggestionChip(
+                                        onClick = { },
+                                        label = { Text("${song.bpm} BPM", fontSize = 11.sp) },
+                                        enabled = false
+                                    )
+                                    SuggestionChip(
+                                        onClick = { },
+                                        label = { Text("${song.cadence} SPM", fontSize = 11.sp) },
+                                        enabled = false
+                                    )
+                                }
+                            }
+                        },
                         trailingContent = { Text(formatTime(song.timestamp)) }
                     )
                     HorizontalDivider()

@@ -74,14 +74,26 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
                 // When a song starts, prepare the NEXT one optimally
                 pickNextSongBasedOnCadence()
 
-                mediaItem?.mediaMetadata?.let { metadata ->
+                mediaItem?.let { item ->
+                    val metadata = item.mediaMetadata
                     val title = metadata.title?.toString() ?: "Unknown"
                     val artist = metadata.artist?.toString() ?: "Unknown Artist"
                     val timestamp = if (activityStartTime == 0L) 0L else System.currentTimeMillis() - activityStartTime
                     
+                    // Find the song in the current playlist to get its BPM
+                    val songInPlaylist = currentPlaylist?.songs?.find { it.id == item.mediaId }
+                    val songBpm = songInPlaylist?.bpm ?: 0
+                    val capturedCadence = currentCadence.toInt()
+
                     val currentList = _playedSongs.value
                     if (currentList.lastOrNull()?.let { it.title == title && it.timestamp == timestamp } != true) {
-                        _playedSongs.value = currentList + PlayedSong(title, artist, timestamp)
+                        _playedSongs.value = currentList + PlayedSong(
+                            title = title,
+                            artist = artist,
+                            timestamp = timestamp,
+                            bpm = songBpm,
+                            cadence = capturedCadence
+                        )
                     }
                 }
             }
@@ -235,7 +247,9 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
                     activityId = activityId,
                     title = it.title,
                     artist = it.artist,
-                    timestamp = it.timestamp
+                    timestamp = it.timestamp,
+                    bpm = it.bpm,
+                    cadence = it.cadence
                 )
             }
             
