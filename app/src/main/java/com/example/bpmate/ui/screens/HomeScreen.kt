@@ -12,7 +12,8 @@ import androidx.compose.ui.unit.dp
 fun HomeScreen(
     onStartNewActivity: () -> Unit,
     onViewHistory: () -> Unit,
-    onManagePlaylists: () -> Unit
+    onManagePlaylists: () -> Unit,
+    onNavigateToDebug: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -50,6 +51,13 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(0.7f)
             ) {
                 Text("Activity History")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedButton(
+                onClick = onNavigateToDebug,
+                modifier = Modifier.fillMaxWidth(0.7f)
+            ) {
+                Text("IMU Debug")
             }
         }
     }

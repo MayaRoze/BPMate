@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,7 +31,7 @@ fun PlaylistManagementScreen(
     val playlists by viewModel.playlists.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
     var selectedPlaylistId by remember { mutableStateOf<String?>(null) }
-    
+
     val selectedPlaylist = playlists.find { it.id == selectedPlaylistId }
 
     val pickAudioLauncher = rememberLauncherForActivityResult(
@@ -114,15 +115,22 @@ fun PlaylistManagementScreen(
                                 ListItem(
                                     headlineContent = { Text(song.title) },
                                     supportingContent = { Text(song.artist) },
-                                    leadingContent = { Icon(Icons.Default.MusicNote, contentDescription = null) },
+                                    leadingContent = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.MusicNote, contentDescription = null)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("${song.bpm} BPM")
+                                        }
+                                    },
                                     trailingContent = {
                                         IconButton(onClick = {
                                             viewModel.removeSong(
-                                                song.id, 
-                                                playlist.id, 
-                                                song.title, 
-                                                song.artist, 
-                                                song.uri.toString()
+                                                song.id,
+                                                playlist.id,
+                                                song.title,
+                                                song.artist,
+                                                song.uri.toString(),
+                                                song.bpm
                                             )
                                         }) {
                                             Icon(Icons.Default.Delete, contentDescription = "Remove")

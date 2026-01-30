@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,6 +19,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bpmate.data.PlayedSong
 import com.example.bpmate.data.local.ActivityWithPlayedSongs
 import com.example.bpmate.playback.PlaybackViewModel
+import com.example.bpmate.ui.screens.PlaylistViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -95,9 +98,9 @@ fun AnalysisScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)

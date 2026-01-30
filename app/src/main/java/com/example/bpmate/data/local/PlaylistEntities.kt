@@ -28,7 +28,8 @@ data class SongEntity(
     val playlistId: String,
     val title: String,
     val artist: String,
-    val uriString: String
+    val uriString: String,
+    val bpm: Int
 )
 
 data class PlaylistWithSongs(

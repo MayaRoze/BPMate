@@ -6,7 +6,8 @@ data class Song(
     val id: String,
     val title: String,
     val artist: String,
-    val uri: Uri
+    val uri: Uri,
+    val bpm: Int
 )
 
 data class Playlist(

@@ -58,6 +58,9 @@ dependencies {
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.material.icons.extended)
 
+    // Accompanist
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+
     // Media3
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)

@@ -37,7 +37,8 @@ fun BPMateApp() {
             HomeScreen(
                 onStartNewActivity = { navController.navigate("create_activity") },
                 onViewHistory = { navController.navigate("history") },
-                onManagePlaylists = { navController.navigate("playlists") }
+                onManagePlaylists = { navController.navigate("playlists") },
+                onNavigateToDebug = { navController.navigate("imu_debug") }
             )
         }
         composable("playlists") {
@@ -92,6 +93,9 @@ fun BPMateApp() {
                 },
                 onBack = { navController.popBackStack() }
             )
+        }
+        composable("imu_debug") {
+            IMU_DebugScreen()
         }
     }
 }
