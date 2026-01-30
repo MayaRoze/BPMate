@@ -108,18 +108,19 @@ fun AnalysisScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Using Peach (Tertiary Container) for this summary card to make it pop
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                 ) {
                     Column(Modifier.padding(16.dp)) {
-                        Text("Date: $startDateString", style = MaterialTheme.typography.bodyMedium)
-                        Text("Mode: $displayMode", style = MaterialTheme.typography.bodyMedium)
-                        Text("Playlist: $displayPlaylist", style = MaterialTheme.typography.bodyMedium)
+                        Text("Date: $startDateString", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                        Text("Mode: $displayMode", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                        Text("Playlist: $displayPlaylist", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
                         val totalDuration = if (displaySongs.isNotEmpty()) {
                             formatTime(displaySongs.last().timestamp)
                         } else "0:00"
-                        Text("Total Duration: $totalDuration", style = MaterialTheme.typography.bodyMedium)
+                        Text("Total Duration: $totalDuration", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
                     }
                 }
             }
@@ -144,18 +145,33 @@ fun AnalysisScreen(
                         supportingContent = { 
                             Column {
                                 Text(song.artist)
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    SuggestionChip(
-                                        onClick = { },
-                                        label = { Text("${song.bpm} BPM", fontSize = 11.sp) },
-                                        enabled = false
-                                    )
-                                    SuggestionChip(
-                                        onClick = { },
-                                        label = { Text("${song.cadence} SPM", fontSize = 11.sp) },
-                                        enabled = false
-                                    )
+                                    // Custom chips with Peach (Tertiary) colors to ensure visibility
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                                        shape = MaterialTheme.shapes.small
+                                    ) {
+                                        Text(
+                                            text = "${song.bpm} BPM",
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                    }
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                                        shape = MaterialTheme.shapes.small
+                                    ) {
+                                        Text(
+                                            text = "${song.cadence} SPM",
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                    }
                                 }
                             }
                         },
