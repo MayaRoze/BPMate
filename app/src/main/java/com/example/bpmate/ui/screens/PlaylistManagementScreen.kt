@@ -17,7 +17,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -78,70 +80,85 @@ fun PlaylistManagementScreen(
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (selectedPlaylistId == null) {
-                if (playlists.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No playlists yet. Tap + to create one.")
-                    }
-                } else {
-                    LazyColumn {
-                        items(playlists) { playlist ->
-                            ListItem(
-                                headlineContent = { Text(playlist.name, fontWeight = FontWeight.Bold) },
-                                supportingContent = { Text("${playlist.songs.size} songs") },
-                                trailingContent = {
-                                    IconButton(onClick = {
-                                        viewModel.deletePlaylist(playlist.id, playlist.name)
-                                    }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete Playlist")
-                                    }
-                                },
-                                modifier = Modifier.clickable { selectedPlaylistId = playlist.id }
-                            )
-                            HorizontalDivider()
-                        }
-                    }
-                }
-            } else {
-                selectedPlaylist?.let { playlist ->
-                    if (playlist.songs.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (selectedPlaylistId == null) {
+                    if (playlists.isEmpty()) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No songs in this playlist. Tap + to add some.")
+                            Text("No playlists yet. Tap + to create one.")
                         }
                     } else {
                         LazyColumn {
-                            items(playlist.songs) { song ->
+                            items(playlists) { playlist ->
                                 ListItem(
-                                    headlineContent = { Text(song.title) },
-                                    supportingContent = { Text(song.artist) },
-                                    leadingContent = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.MusicNote, contentDescription = null)
-                                            Spacer(Modifier.width(8.dp))
-                                            Text("${song.bpm} BPM")
-                                        }
-                                    },
+                                    headlineContent = { Text(playlist.name, fontWeight = FontWeight.Bold) },
+                                    supportingContent = { Text("${playlist.songs.size} songs") },
                                     trailingContent = {
                                         IconButton(onClick = {
-                                            viewModel.removeSong(
-                                                song.id,
-                                                playlist.id,
-                                                song.title,
-                                                song.artist,
-                                                song.uri.toString(),
-                                                song.bpm
-                                            )
+                                            viewModel.deletePlaylist(playlist.id, playlist.name)
                                         }) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Remove")
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete Playlist")
                                         }
-                                    }
+                                    },
+                                    modifier = Modifier.clickable { selectedPlaylistId = playlist.id }
                                 )
                                 HorizontalDivider()
                             }
                         }
                     }
+                } else {
+                    selectedPlaylist?.let { playlist ->
+                        if (playlist.songs.isEmpty()) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("No songs in this playlist. Tap + to add some.")
+                            }
+                        } else {
+                            LazyColumn {
+                                items(playlist.songs) { song ->
+                                    ListItem(
+                                        headlineContent = { Text(song.title) },
+                                        supportingContent = { Text(song.artist) },
+                                        leadingContent = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.MusicNote, contentDescription = null)
+                                                Spacer(Modifier.width(8.dp))
+                                                Text("${song.bpm} BPM")
+                                            }
+                                        },
+                                        trailingContent = {
+                                            IconButton(onClick = {
+                                                viewModel.removeSong(
+                                                    song.id,
+                                                    playlist.id,
+                                                    song.title,
+                                                    song.artist,
+                                                    song.uri.toString(),
+                                                    song.bpm
+                                                )
+                                            }) {
+                                                Icon(Icons.Default.Delete, contentDescription = "Remove")
+                                            }
+                                        }
+                                    )
+                                    HorizontalDivider()
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+            if (selectedPlaylistId == null) {
+                val uriHandler = LocalUriHandler.current
+                Text(
+                    text = "BPM data provided by getsongbpm.com",
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                        .clickable { uriHandler.openUri("https://getsongbpm.com") },
+                    style = MaterialTheme.typography.bodySmall,
+                    textDecoration = TextDecoration.Underline,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }

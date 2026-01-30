@@ -21,4 +21,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "BPMate"
 include(":app")
- 
