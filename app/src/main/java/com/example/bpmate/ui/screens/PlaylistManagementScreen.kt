@@ -7,10 +7,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,9 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.bpmate.data.Song
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +37,7 @@ fun PlaylistManagementScreen(
     val playlists by viewModel.playlists.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
     var selectedPlaylistId by remember { mutableStateOf<String?>(null) }
+    var editingSong by remember { mutableStateOf<Song?>(null) }
 
     val selectedPlaylist = playlists.find { it.id == selectedPlaylistId }
 
@@ -119,10 +124,19 @@ fun PlaylistManagementScreen(
                                         headlineContent = { Text(song.title) },
                                         supportingContent = { Text(song.artist) },
                                         leadingContent = {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.clickable { editingSong = song }
+                                            ) {
                                                 Icon(Icons.Default.MusicNote, contentDescription = null)
                                                 Spacer(Modifier.width(8.dp))
                                                 Text("${song.bpm} BPM")
+                                                Icon(
+                                                    Icons.Default.Edit,
+                                                    contentDescription = "Edit BPM",
+                                                    modifier = Modifier.size(16.dp).padding(start = 4.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
                                             }
                                         },
                                         trailingContent = {
@@ -188,6 +202,50 @@ fun PlaylistManagementScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showCreateDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    editingSong?.let { song ->
+        var bpmText by remember { mutableStateOf(song.bpm.toString()) }
+        AlertDialog(
+            onDismissRequest = { editingSong = null },
+            title = { Text("Edit BPM - ${song.title}") },
+            text = {
+                Column {
+                    Text("Enter the correct BPM for this song:")
+                    Spacer(Modifier.height(8.dp))
+                    TextField(
+                        value = bpmText,
+                        onValueChange = { bpmText = it.filter { char -> char.isDigit() } },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        label = { Text("BPM") }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val newBpm = bpmText.toIntOrNull() ?: song.bpm
+                    selectedPlaylistId?.let { pid ->
+                        viewModel.updateSongBpm(
+                            song.id,
+                            pid,
+                            song.title,
+                            song.artist,
+                            song.uri.toString(),
+                            newBpm
+                        )
+                    }
+                    editingSong = null
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingSong = null }) {
                     Text("Cancel")
                 }
             }

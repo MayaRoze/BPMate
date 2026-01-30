@@ -18,6 +18,9 @@ interface PlaylistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSongs(songs: List<SongEntity>)
 
+    @Update
+    suspend fun updateSong(song: SongEntity)
+
     @Delete
     suspend fun deleteSong(song: SongEntity)
 

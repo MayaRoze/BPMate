@@ -48,6 +48,11 @@ fun PlayerScreen(
         playbackViewModel.connectController(context)
     }
 
+    // Sync cadence with playbackViewModel for smart song selection
+    LaunchedEffect(cadence) {
+        playbackViewModel.updateCadence(cadence)
+    }
+
     // When player is ready and playlist is found, set it up
     LaunchedEffect(player, playlists) {
         val p = player
@@ -211,8 +216,8 @@ fun PlayerScreen(
                         modifier = Modifier.size(32.dp)
                     )
                 }
-                IconButton(onClick = { player?.seekToNextMediaItem() }) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Next", modifier = Modifier.size(40.dp))
+                IconButton(onClick = { playbackViewModel.skipToBestMatch() }) {
+                    Icon(Icons.Default.SkipNext, contentDescription = "Next (Auto-BPM)", modifier = Modifier.size(40.dp))
                 }
             }
 

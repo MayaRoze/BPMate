@@ -89,6 +89,12 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun updateSongBpm(songId: String, playlistId: String, title: String, artist: String, uriString: String, newBpm: Int) {
+        viewModelScope.launch {
+            dao.updateSong(SongEntity(songId, playlistId, title, artist, uriString, newBpm))
+        }
+    }
+
     fun removeSong(songId: String, playlistId: String, title: String, artist: String, uriString: String, bpm: Int) {
         viewModelScope.launch {
             dao.deleteSong(SongEntity(songId, playlistId, title, artist, uriString, bpm))
