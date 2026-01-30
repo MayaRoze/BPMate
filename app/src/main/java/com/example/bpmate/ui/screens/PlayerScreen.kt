@@ -2,6 +2,7 @@ package com.example.bpmate.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MusicNote
@@ -18,7 +19,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
 import com.example.bpmate.playback.PlaybackViewModel
 
@@ -28,9 +28,9 @@ fun PlayerScreen(
     playlistId: String,
     onFinishActivity: () -> Unit,
     onBack: () -> Unit,
-    playlistViewModel: PlaylistViewModel = viewModel(),
-    playbackViewModel: PlaybackViewModel = viewModel(),
-    bluetoothViewModel: BluetoothViewModel = viewModel()
+    playlistViewModel: PlaylistViewModel,
+    playbackViewModel: PlaybackViewModel,
+    bluetoothViewModel: BluetoothViewModel
 ) {
     val context = LocalContext.current
     val playlists by playlistViewModel.playlists.collectAsState()
@@ -169,8 +169,17 @@ fun PlayerScreen(
                 text = currentTitle,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .basicMarquee(
+                        iterations = Int.MAX_VALUE,
+                        initialDelayMillis = 700,
+                        repeatDelayMillis = 700
+                    )
             )
+
             Text(
                 text = currentArtist,
                 style = MaterialTheme.typography.bodyLarge,

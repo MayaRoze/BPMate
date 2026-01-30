@@ -32,6 +32,7 @@ fun BPMateApp() {
     val navController = rememberNavController()
     val playbackViewModel: PlaybackViewModel = viewModel()
     val bluetoothViewModel: BluetoothViewModel = viewModel()
+    val playlistViewModel: PlaylistViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
@@ -63,8 +64,9 @@ fun BPMateApp() {
             val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
             PlayerScreen(
                 playlistId = playlistId,
-                onFinishActivity = { navController.navigate("analysis") },
+                onFinishActivity = { navController.navigate("analysis?activityId=$id") },
                 onBack = { navController.popBackStack() },
+                playlistViewModel = playlistViewModel,
                 playbackViewModel = playbackViewModel,
                 bluetoothViewModel = bluetoothViewModel
             )
