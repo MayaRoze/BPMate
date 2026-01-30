@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.BPMate" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.BPMate" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- For Android 12+ (SplashScreen API) -->
+        <item name="android:windowSplashScreenBackground">@color/dark_cyan</item>
+        
+        <!-- For older versions / General Window Background -->
+        <item name="android:windowBackground">@color/dark_cyan</item>
+    </style>
 </resources>
