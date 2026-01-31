@@ -13,6 +13,8 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -75,18 +77,12 @@ fun PlayerScreen(
         onBack()
     }
 
-    // Connect to playback service and load playlist
-    LaunchedEffect(Unit) {
-        playbackViewModel.connectController(context)
-    }
-
     // GPS Tracking for Driving Mode
     LaunchedEffect(activityMode, locationPermissions.allPermissionsGranted) {
         if (activityMode == "Drive" && locationPermissions.allPermissionsGranted) {
             val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
             val locationListener = object : LocationListener {
                 override fun onLocationChanged(location: Location) {
-                    // speed is in m/s, convert to km/h
                     val speedKmh = location.speed * 3.6f
                     currentSpeedKmh = speedKmh
                     playbackViewModel.updateVelocity(speedKmh)
@@ -229,20 +225,33 @@ fun PlayerScreen(
                         val label = if (activityMode == "Drive") "VELOCITY" else "CADENCE"
                         val value = if (activityMode == "Drive") "%.0f".format(currentSpeedKmh) else "%.0f".format(cadence)
                         val unit = if (activityMode == "Drive") "km / h" else "steps / min"
+                        val icon = if (activityMode == "Drive") Icons.Default.DirectionsCar else Icons.Default.DirectionsWalk
 
                         Text(
                             text = label,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
-                        Text(
-                            text = value,
-                            style = MaterialTheme.typography.displayLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 64.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(Modifier.width(16.dp))
+                            Text(
+                                text = value,
+                                style = MaterialTheme.typography.displayLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 64.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
                         Text(
                             text = unit,
                             style = MaterialTheme.typography.labelLarge,
@@ -267,7 +276,7 @@ fun PlayerScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Box(
                     modifier = Modifier

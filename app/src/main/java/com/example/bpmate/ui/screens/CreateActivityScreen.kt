@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +41,7 @@ fun CreateActivityScreen(
 
     val playlists by playlistViewModel.playlists.collectAsState()
     val movementOptions = listOf("Walk/Run", "Drive")
+    val focusManager = LocalFocusManager.current
 
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -104,7 +106,10 @@ fun CreateActivityScreen(
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("Selected Playlist", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(bottom = 8.dp))
                             OutlinedCard(
-                                onClick = { showPlaylistDialog = true },
+                                onClick = { 
+                                    focusManager.clearFocus()
+                                    showPlaylistDialog = true 
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.outlinedCardColors(
@@ -140,7 +145,10 @@ fun CreateActivityScreen(
                                         .height(48.dp)
                                         .selectable(
                                             selected = (text == movementMode),
-                                            onClick = { movementMode = text },
+                                            onClick = { 
+                                                focusManager.clearFocus()
+                                                movementMode = text 
+                                            },
                                             role = Role.RadioButton
                                         ),
                                     verticalAlignment = Alignment.CenterVertically
@@ -193,6 +201,7 @@ fun CreateActivityScreen(
                         onClick = { 
                             val playlist = playlists.find { it.id == selectedPlaylistId }
                             if (playlist != null) {
+                                focusManager.clearFocus()
                                 playbackViewModel.startNewActivity(name, description, movementMode, playlist)
                                 onStartRecording(playlist.id) 
                             }
@@ -228,6 +237,7 @@ fun CreateActivityScreen(
                                     selectedPlaylistName = playlist.name
                                     selectedPlaylistId = playlist.id
                                     showPlaylistDialog = false
+                                    focusManager.clearFocus()
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
