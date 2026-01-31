@@ -1,5 +1,11 @@
 package com.example.bpmate.ui.screens
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -29,8 +35,11 @@ import androidx.media3.common.Player
 import com.example.bpmate.R
 import com.example.bpmate.playback.PlaybackViewModel
 import com.example.bpmate.ui.theme.TranslucentDarkCyan
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
-@OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("MissingPermission")
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun PlayerScreen(
     playlistId: String,
@@ -45,12 +54,20 @@ fun PlayerScreen(
     val player by playbackViewModel.player.collectAsState()
     val cadence by bluetoothViewModel.cadence.collectAsState()
     val connectionStatus by bluetoothViewModel.connectionStatus.collectAsState()
+    val activityMode by playbackViewModel.activityMode.collectAsState()
     
     var currentTitle by remember { mutableStateOf("Not Playing") }
     var currentArtist by remember { mutableStateOf("") }
     var isPlaying by remember { mutableStateOf(false) }
     var position by remember { mutableStateOf(0L) }
     var duration by remember { mutableStateOf(0L) }
+    
+    var currentSpeedKmh by remember { mutableStateOf(0f) }
+
+    // Location Permission for Driving Mode
+    val locationPermissions = rememberMultiplePermissionsState(
+        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+    )
 
     // Handle system back button
     BackHandler {
@@ -61,6 +78,36 @@ fun PlayerScreen(
     // Connect to playback service and load playlist
     LaunchedEffect(Unit) {
         playbackViewModel.connectController(context)
+    }
+
+    // GPS Tracking for Driving Mode
+    LaunchedEffect(activityMode, locationPermissions.allPermissionsGranted) {
+        if (activityMode == "Drive" && locationPermissions.allPermissionsGranted) {
+            val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val locationListener = object : LocationListener {
+                override fun onLocationChanged(location: Location) {
+                    // speed is in m/s, convert to km/h
+                    val speedKmh = location.speed * 3.6f
+                    currentSpeedKmh = speedKmh
+                    playbackViewModel.updateVelocity(speedKmh)
+                }
+                override fun onProviderEnabled(provider: String) {}
+                override fun onProviderDisabled(provider: String) {}
+            }
+            
+            try {
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 1f, locationListener)
+            } catch (e: Exception) {
+                // Fallback if GPS fails
+            }
+        }
+    }
+
+    // Request permissions if needed
+    LaunchedEffect(activityMode) {
+        if (activityMode == "Drive" && !locationPermissions.allPermissionsGranted) {
+            locationPermissions.launchMultiplePermissionRequest()
+        }
     }
 
     // Sync cadence with playbackViewModel for smart song selection
@@ -168,7 +215,7 @@ fun PlayerScreen(
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Cadence Display
+                // Movement Data Display (Cadence or Velocity)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -179,13 +226,17 @@ fun PlayerScreen(
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        val label = if (activityMode == "Drive") "VELOCITY" else "CADENCE"
+                        val value = if (activityMode == "Drive") "%.0f".format(currentSpeedKmh) else "%.0f".format(cadence)
+                        val unit = if (activityMode == "Drive") "km / h" else "steps / min"
+
                         Text(
-                            text = "CADENCE",
+                            text = label,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Text(
-                            text = "%.0f".format(cadence),
+                            text = value,
                             style = MaterialTheme.typography.displayLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 64.sp
@@ -193,14 +244,21 @@ fun PlayerScreen(
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Text(
-                            text = "steps / min",
+                            text = unit,
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         
-                        if (connectionStatus != "Connected") {
+                        if (activityMode != "Drive" && connectionStatus != "Connected") {
                             Text(
                                 text = "Sensor: $connectionStatus",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        } else if (activityMode == "Drive" && !locationPermissions.allPermissionsGranted) {
+                            Text(
+                                text = "Location permission required",
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.padding(top = 8.dp)

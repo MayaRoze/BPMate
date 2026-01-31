@@ -202,8 +202,9 @@ fun AnalysisScreen(
                                                 color = MaterialTheme.colorScheme.tertiaryContainer,
                                                 shape = RoundedCornerShape(8.dp)
                                             ) {
+                                                val movementLabel = if (displayMode == "Drive") "km/h" else "SPM"
                                                 Text(
-                                                    text = "${song.cadence} SPM",
+                                                    text = "${song.cadence} $movementLabel",
                                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                                     fontSize = 11.sp,
                                                     fontWeight = FontWeight.Black,

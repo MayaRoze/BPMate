@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -32,6 +34,12 @@ fun BPMateApp() {
     val navController = rememberNavController()
     val playbackViewModel: PlaybackViewModel = viewModel()
     val bluetoothViewModel: BluetoothViewModel = viewModel()
+    val context = LocalContext.current
+
+    // Initialize playback controller as soon as the app starts
+    LaunchedEffect(Unit) {
+        playbackViewModel.connectController(context)
+    }
 
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
