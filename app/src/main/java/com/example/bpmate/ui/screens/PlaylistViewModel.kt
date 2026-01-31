@@ -9,12 +9,14 @@ import com.example.bpmate.data.Song
 import com.example.bpmate.data.local.ActivityEntity
 import com.example.bpmate.data.local.ActivityWithPlayedSongs
 import com.example.bpmate.data.local.AppDatabase
+import com.example.bpmate.data.local.DefaultPlaylist
 import com.example.bpmate.data.local.PlaylistEntity
 import com.example.bpmate.data.local.SongEntity
 import com.example.bpmate.utils.BpmAnalyzer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -48,6 +50,40 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
             initialValue = emptyList()
         )
 
+    init {
+        viewModelScope.launch {
+            // --- FIX APPLIED HERE ---
+            // Find any existing default playlist from the database.
+            val existingDefault = dao.getPlaylistsWithSongs().first().find {
+                it.playlist.name == DefaultPlaylist.PLAYLIST_NAME
+            }
+
+            // If a default playlist exists, delete it first to ensure it gets updated.
+            existingDefault?.let {
+                dao.deletePlaylist(it.playlist)
+            }
+
+            // Now, create the new, up-to-date version of the playlist.
+            createDefaultPlaylist()
+        }
+    }
+
+    private suspend fun createDefaultPlaylist() {
+        val playlistId = UUID.randomUUID().toString()
+        dao.insertPlaylist(PlaylistEntity(id = playlistId, name = DefaultPlaylist.PLAYLIST_NAME))
+        val songEntities = DefaultPlaylist.getSongs().map {
+            SongEntity(
+                id = it.id,
+                playlistId = playlistId,
+                title = it.title,
+                artist = it.artist,
+                uriString = it.uri.toString(),
+                bpm = it.bpm
+            )
+        }
+        dao.insertSongs(songEntities)
+    }
+
     fun createPlaylist(name: String) {
         viewModelScope.launch {
             dao.insertPlaylist(PlaylistEntity(id = UUID.randomUUID().toString(), name = name))
@@ -56,6 +92,8 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
 
     fun deletePlaylist(playlistId: String, name: String) {
         viewModelScope.launch {
+            // Prevent the user from deleting the default playlist from the UI.
+            if (name == DefaultPlaylist.PLAYLIST_NAME) return@launch
             dao.deletePlaylist(PlaylistEntity(playlistId, name))
         }
     }
