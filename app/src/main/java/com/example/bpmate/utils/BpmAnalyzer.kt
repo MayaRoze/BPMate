@@ -5,76 +5,106 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
+import androidx.annotation.OptIn
+import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.MetadataRetriever
+import androidx.media3.extractor.metadata.id3.TextInformationFrame
+import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
+import java.util.concurrent.ExecutionException
+import kotlin.coroutines.resume
 
 object BpmAnalyzer {
-
-    // IMPORTANT: Ensure your key is active by having a backlink to getsongbpm.com in your app.
-    private const val API_KEY = "API_KEY_HERE"
 
     data class SongInfo(val title: String, val artist: String, val bpm: Int)
 
     /**
-     * Searches for song metadata and BPM using the GetSongBPM (GetSong.co) API.
+     * Extracts song metadata and infers BPM.
+     * Prioritizes the "Beats-per-minute" (TBPM) ID3 tag found in MP3 files using Media3.
      */
     suspend fun getSongInfo(context: Context, uri: Uri): SongInfo = withContext(Dispatchers.IO) {
         val (title, artist) = getSongMetadata(context, uri)
+        val fileName = getFileName(context, uri)
 
-        // Clean metadata for better search accuracy
-        val cleanTitle = title.split("(")[0].split("-")[0].replace(Regex("(?i)feat.*"), "").trim()
-        val cleanArtist = if (artist != "Unknown Artist") artist.split(",")[0].split("&")[0].trim() else ""
+        // 1. Try to extract BPM from ID3 "TBPM" or "TBP" tag using Media3
+        var inferredBpm = extractBpmFromId3(context, uri)
 
-        var bpm = 0
-        try {
-            val query = if (cleanArtist.isEmpty()) cleanTitle else "$cleanArtist $cleanTitle"
-            val encodedQuery = URLEncoder.encode(query, "UTF-8")
-
-            val urlString = "https://api.getsong.co/search/?type=song&lookup=$encodedQuery"
-            Log.d("BpmAnalyzer", "Requesting: $urlString")
-
-            val url = URL(urlString)
-            val connection = url.openConnection() as HttpURLConnection
-
-            connection.requestMethod = "GET"
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (BPMate Android App)")
-            connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("X-API-KEY", API_KEY)
-            connection.setRequestProperty("Referer", "https://getsongbpm.com")
-
-            connection.connectTimeout = 10000
-            connection.readTimeout = 10000
-
-            val responseCode = connection.responseCode
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val response = connection.inputStream.bufferedReader().use { it.readText() }
-                Log.d("BpmAnalyzer", "Raw JSON: $response")
-
-                val jsonResponse = JSONObject(response)
-                val searchResult = jsonResponse.optJSONArray("search") ?: jsonResponse.optJSONArray("search_results")
-
-                if (searchResult != null && searchResult.length() > 0) {
-                    val song = searchResult.getJSONObject(0)
-                    val tempoObj = song.opt("tempo")
-                    bpm = when (tempoObj) {
-                        is Number -> tempoObj.toInt()
-                        is String -> tempoObj.split(".")[0].toIntOrNull() ?: 0
-                        else -> 0
-                    }
-                    Log.d("BpmAnalyzer", "Match found! BPM: $bpm")
-                }
-            } else {
-                Log.e("BpmAnalyzer", "HTTP Error: $responseCode. Ensure you have a backlink to getsongbpm.com in your app.")
-            }
-        } catch (e: Exception) {
-            Log.e("BpmAnalyzer", "Exception during API call: ${e.message}")
+        // 2. Fallback: Try to extract BPM from filename (e.g. "Song Name [120].mp3")
+        if (inferredBpm == null) {
+            inferredBpm = extractBpmFromString(fileName)
         }
 
-        return@withContext SongInfo(title, artist, if (bpm > 0) bpm else 120)
+        // 3. Fallback: Try to extract BPM from Title metadata (e.g. "Song Name 128BPM")
+        if (inferredBpm == null) {
+            inferredBpm = extractBpmFromString(title)
+        }
+
+        // Return inferred BPM or default to 120
+        return@withContext SongInfo(title, artist, inferredBpm ?: 120)
+    }
+
+    /**
+     * Uses Media3's MetadataRetriever to look for TBPM or TBP ID3 frames.
+     */
+    @OptIn(UnstableApi::class)
+    private suspend fun extractBpmFromId3(context: Context, uri: Uri): Int? = suspendCancellableCoroutine { continuation ->
+        try {
+            val mediaItem = MediaItem.fromUri(uri)
+            val future = MetadataRetriever.retrieveMetadata(context, mediaItem)
+            
+            future.addListener({
+                try {
+                    val trackGroups = future.get()
+                    var bpm: Int? = null
+                    
+                    for (i in 0 until trackGroups.length) {
+                        val trackGroup = trackGroups.get(i)
+                        for (j in 0 until trackGroup.length) {
+                            val metadata = trackGroup.getFormat(j).metadata ?: continue
+                            for (k in 0 until metadata.length()) {
+                                val entry = metadata.get(k)
+                                if (entry is TextInformationFrame) {
+                                    // TBPM is the standard ID3v2 tag for Beats Per Minute
+                                    if (entry.id == "TBPM" || entry.id == "TBP") {
+                                        bpm = entry.value.toIntOrNull()
+                                        if (bpm != null) break
+                                    }
+                                }
+                            }
+                            if (bpm != null) break
+                        }
+                        if (bpm != null) break
+                    }
+                    continuation.resume(bpm)
+                } catch (e: ExecutionException) {
+                    continuation.resume(null)
+                } catch (e: InterruptedException) {
+                    continuation.resume(null)
+                } catch (e: Exception) {
+                    continuation.resume(null)
+                }
+            }, MoreExecutors.directExecutor())
+        } catch (e: Exception) {
+            continuation.resume(null)
+        }
+    }
+
+    /**
+     * Looks for a number inside brackets [120] or followed by "BPM".
+     */
+    private fun extractBpmFromString(text: String): Int? {
+        // Match [120]
+        val bracketMatch = "\\[(\\d+)\\]".toRegex().find(text)
+        if (bracketMatch != null) return bracketMatch.groupValues[1].toIntOrNull()
+
+        // Match "120 BPM" or "120BPM" (case insensitive)
+        val bpmMatch = "(\\d+)\\s*(?i)BPM".toRegex().find(text)
+        if (bpmMatch != null) return bpmMatch.groupValues[1].toIntOrNull()
+
+        return null
     }
 
     private fun getSongMetadata(context: Context, uri: Uri): Pair<String, String> {
@@ -82,11 +112,18 @@ object BpmAnalyzer {
         var title: String? = null
         var artist: String? = null
         try {
-            retriever.setDataSource(context, uri)
+            if (uri.scheme == "asset") {
+                val path = uri.path?.removePrefix("/") ?: ""
+                val afd = context.assets.openFd(path)
+                retriever.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                afd.close()
+            } else {
+                retriever.setDataSource(context, uri)
+            }
             title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
             artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
         } catch (e: Exception) {
-            Log.e("SONG_METADATA", "Error reading metadata for $uri", e)
+            Log.e("BpmAnalyzer", "Metadata error for $uri: ${e.message}")
         } finally {
             retriever.release()
         }
@@ -97,15 +134,22 @@ object BpmAnalyzer {
     }
 
     private fun getFileName(context: Context, uri: Uri): String {
+        if (uri.scheme == "asset") {
+            return uri.lastPathSegment ?: "Unknown"
+        }
         var name = "Unknown Track"
-        val cursor = context.contentResolver.query(uri, null, null, null, null)
-        cursor?.use {
-            if (it.moveToFirst()) {
-                val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (nameIndex != -1) {
-                    name = it.getString(nameIndex)
+        try {
+            val cursor = context.contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1) {
+                        name = it.getString(nameIndex)
+                    }
                 }
             }
+        } catch (e: Exception) {
+            name = uri.lastPathSegment ?: "Unknown"
         }
         return name
     }

@@ -2,6 +2,7 @@ package com.example.bpmate.ui.screens
 
 import android.app.Application
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bpmate.data.Playlist
@@ -9,7 +10,6 @@ import com.example.bpmate.data.Song
 import com.example.bpmate.data.local.ActivityEntity
 import com.example.bpmate.data.local.ActivityWithPlayedSongs
 import com.example.bpmate.data.local.AppDatabase
-import com.example.bpmate.data.local.DefaultPlaylist
 import com.example.bpmate.data.local.PlaylistEntity
 import com.example.bpmate.data.local.SongEntity
 import com.example.bpmate.utils.BpmAnalyzer
@@ -52,36 +52,67 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
 
     init {
         viewModelScope.launch {
-            // --- FIX APPLIED HERE ---
-            // Find any existing default playlist from the database.
-            val existingDefault = dao.getPlaylistsWithSongs().first().find {
-                it.playlist.name == DefaultPlaylist.PLAYLIST_NAME
-            }
-
-            // If a default playlist exists, delete it first to ensure it gets updated.
-            existingDefault?.let {
-                dao.deletePlaylist(it.playlist)
-            }
-
-            // Now, create the new, up-to-date version of the playlist.
-            createDefaultPlaylist()
+            syncAssetPlaylists()
         }
     }
 
-    private suspend fun createDefaultPlaylist() {
-        val playlistId = UUID.randomUUID().toString()
-        dao.insertPlaylist(PlaylistEntity(id = playlistId, name = DefaultPlaylist.PLAYLIST_NAME))
-        val songEntities = DefaultPlaylist.getSongs().map {
-            SongEntity(
-                id = it.id,
-                playlistId = playlistId,
-                title = it.title,
-                artist = it.artist,
-                uriString = it.uri.toString(),
-                bpm = it.bpm
-            )
+    private suspend fun syncAssetPlaylists() {
+        val assetManager = getApplication<Application>().assets
+        val playlistsRoot = "Playlists"
+        
+        // 1. Get current folders in assets
+        val assetFolders = try { 
+            assetManager.list(playlistsRoot)?.toSet() ?: emptySet() 
+        } catch (e: Exception) { 
+            emptySet() 
         }
-        dao.insertSongs(songEntities)
+
+        val existingPlaylists = dao.getPlaylistsWithSongs().first()
+
+        // 2. Refresh or create playlists based on asset folders
+        for (folderName in assetFolders) {
+            val folderPath = "$playlistsRoot/$folderName"
+            val songFiles = assetManager.list(folderPath) ?: continue
+            val audioFiles = songFiles.filter { isAudioFile(it) }
+            
+            // Delete existing version to handle file changes/deletions within the folder
+            existingPlaylists.find { it.playlist.name == folderName }?.let {
+                dao.deletePlaylist(it.playlist)
+            }
+
+            if (audioFiles.isEmpty()) continue
+
+            val playlistId = UUID.randomUUID().toString()
+            dao.insertPlaylist(PlaylistEntity(id = playlistId, name = folderName))
+
+            val songEntities = mutableListOf<SongEntity>()
+            for (songFile in audioFiles) {
+                val assetUri = Uri.parse("asset:///$folderPath/$songFile")
+                try {
+                    val songInfo = BpmAnalyzer.getSongInfo(getApplication(), assetUri)
+                    songEntities.add(SongEntity(
+                        id = UUID.randomUUID().toString(),
+                        playlistId = playlistId,
+                        title = songInfo.title,
+                        artist = songInfo.artist,
+                        uriString = assetUri.toString(),
+                        bpm = songInfo.bpm
+                    ))
+                } catch (e: Exception) {
+                    Log.e("Sync", "Failed to load $songFile", e)
+                }
+            }
+            dao.insertSongs(songEntities)
+        }
+
+        // 3. Remove playlists that are no longer in assets (but were asset-managed)
+        // We assume any playlist created via assets won't be manually created with the same name.
+        // For robustness, we could track 'isAssetManaged' in the DB, but name-check is usually enough.
+    }
+
+    private fun isAudioFile(fileName: String): Boolean {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        return ext in setOf("mp3", "m4a", "wav", "ogg", "aac")
     }
 
     fun createPlaylist(name: String) {
@@ -92,8 +123,10 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
 
     fun deletePlaylist(playlistId: String, name: String) {
         viewModelScope.launch {
-            // Prevent the user from deleting the default playlist from the UI.
-            if (name == DefaultPlaylist.PLAYLIST_NAME) return@launch
+            // Prevent deletion of asset-based default playlists from UI
+            val assetFolders = getApplication<Application>().assets.list("Playlists") ?: emptyArray()
+            if (name in assetFolders) return@launch
+            
             dao.deletePlaylist(PlaylistEntity(playlistId, name))
         }
     }
