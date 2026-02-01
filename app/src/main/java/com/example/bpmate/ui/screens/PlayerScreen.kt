@@ -136,6 +136,7 @@ fun PlayerScreen(
     LaunchedEffect(player) {
         val p = player ?: return@LaunchedEffect
         
+        // Initial UI sync
         val updateMetadata = {
             currentTitle = p.mediaMetadata.title?.toString() ?: "Unknown"
             currentArtist = p.mediaMetadata.artist?.toString() ?: "Unknown Artist"
@@ -260,13 +261,13 @@ fun PlayerScreen(
 
                 // Movement Data Display (Cadence or Velocity)
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.width(260.dp), // Matched width to cover art
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f)
                     )
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val label = if (activityMode == "Drive") "VELOCITY" else "CADENCE"
@@ -276,7 +277,7 @@ fun PlayerScreen(
 
                         Text(
                             text = label,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Row(
@@ -287,21 +288,21 @@ fun PlayerScreen(
                                 imageVector = icon,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(48.dp)
+                                modifier = Modifier.size(36.dp)
                             )
-                            Spacer(Modifier.width(16.dp))
+                            Spacer(Modifier.width(12.dp))
                             Text(
                                 text = value,
-                                style = MaterialTheme.typography.displayLarge.copy(
+                                style = MaterialTheme.typography.displayMedium.copy(
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 64.sp
+                                    fontSize = 48.sp
                                 ),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
                         Text(
                             text = unit,
-                            style = MaterialTheme.typography.labelLarge,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         
@@ -310,24 +311,24 @@ fun PlayerScreen(
                                 text = "Sensor: $connectionStatus",
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(top = 8.dp)
+                                modifier = Modifier.padding(top = 4.dp)
                             )
                         } else if (activityMode == "Drive" && !locationPermissions.allPermissionsGranted) {
                             Text(
                                 text = "Location permission required",
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(top = 8.dp)
+                                modifier = Modifier.padding(top = 4.dp)
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Box(
                     modifier = Modifier
-                        .size(220.dp)
+                        .size(260.dp) // Cover art size
                         .clip(MaterialTheme.shapes.large)
                         .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)),
                     contentAlignment = Alignment.Center
@@ -343,7 +344,7 @@ fun PlayerScreen(
                         Icon(
                             Icons.Default.MusicNote,
                             contentDescription = null,
-                            modifier = Modifier.size(80.dp),
+                            modifier = Modifier.size(100.dp),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
@@ -385,7 +386,7 @@ fun PlayerScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Slider(
                     value = if (duration > 0) position.toFloat() / duration.toFloat() else 0f,
@@ -406,7 +407,7 @@ fun PlayerScreen(
                     Text(formatTime(duration), style = MaterialTheme.typography.bodySmall, color = Color.White)
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
