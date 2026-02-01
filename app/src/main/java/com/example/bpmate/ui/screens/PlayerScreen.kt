@@ -3,9 +3,11 @@ package com.example.bpmate.ui.screens
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.media.MediaMetadataRetriever
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -26,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -39,6 +43,8 @@ import com.example.bpmate.playback.PlaybackViewModel
 import com.example.bpmate.ui.theme.TranslucentDarkCyan
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
@@ -65,6 +71,7 @@ fun PlayerScreen(
     var duration by remember { mutableStateOf(0L) }
     
     var currentSpeedKmh by remember { mutableStateOf(0f) }
+    var artwork by remember { mutableStateOf<ImageBitmap?>(null) }
 
     // Location Permission for Driving Mode
     val locationPermissions = rememberMultiplePermissionsState(
@@ -75,6 +82,11 @@ fun PlayerScreen(
     BackHandler {
         playbackViewModel.stopPlayback()
         onBack()
+    }
+
+    // Connect to playback service and load playlist
+    LaunchedEffect(Unit) {
+        playbackViewModel.connectController(context)
     }
 
     // GPS Tracking for Driving Mode
@@ -124,7 +136,6 @@ fun PlayerScreen(
     LaunchedEffect(player) {
         val p = player ?: return@LaunchedEffect
         
-        // Initial UI sync
         val updateMetadata = {
             currentTitle = p.mediaMetadata.title?.toString() ?: "Unknown"
             currentArtist = p.mediaMetadata.artist?.toString() ?: "Unknown Artist"
@@ -152,13 +163,49 @@ fun PlayerScreen(
         p.addListener(listener)
         
         try {
-            // Polling for position
             while (true) {
                 position = p.currentPosition.coerceAtLeast(0L)
                 kotlinx.coroutines.delay(1000)
             }
         } finally {
             p.removeListener(listener)
+        }
+    }
+
+    // Dynamic Artwork Extraction
+    LaunchedEffect(player, currentTitle) {
+        val p = player ?: return@LaunchedEffect
+        val metadata = p.mediaMetadata
+        val data = metadata.artworkData
+        
+        if (data != null) {
+            artwork = BitmapFactory.decodeByteArray(data, 0, data.size)?.asImageBitmap()
+        } else {
+            val uri = p.currentMediaItem?.localConfiguration?.uri
+            if (uri != null) {
+                artwork = withContext(Dispatchers.IO) {
+                    val retriever = MediaMetadataRetriever()
+                    try {
+                        if (uri.scheme == "asset") {
+                            val path = uri.path?.removePrefix("/") ?: ""
+                            val afd = context.assets.openFd(path)
+                            retriever.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                            afd.close()
+                        } else {
+                            retriever.setDataSource(context, uri)
+                        }
+                        retriever.embeddedPicture?.let { bytes ->
+                            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                        }
+                    } catch (e: Exception) {
+                        null
+                    } finally {
+                        retriever.release()
+                    }
+                }
+            } else {
+                artwork = null
+            }
         }
     }
 
@@ -276,7 +323,7 @@ fun PlayerScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
                 Box(
                     modifier = Modifier
@@ -285,12 +332,21 @@ fun PlayerScreen(
                         .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.MusicNote,
-                        contentDescription = null,
-                        modifier = Modifier.size(80.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    if (artwork != null) {
+                        Image(
+                            bitmap = artwork!!,
+                            contentDescription = "Cover Art",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.MusicNote,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
