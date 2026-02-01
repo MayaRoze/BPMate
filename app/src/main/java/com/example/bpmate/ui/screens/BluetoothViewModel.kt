@@ -19,6 +19,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bpmate.data.IMU_Data
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -58,6 +59,16 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
     private val CADENCE_WINDOW_MS = 10000L // 10 seconds window for cadence calculation
     private val STEP_THRESHOLD = 13.5f // Adjusted threshold for peak detection
     private val STEP_COOLDOWN_MS = 250L // Minimum time between steps (~240 steps/min max)
+
+    init {
+        // Periodic cadence update to ensure it drops to 0 when movement stops
+        viewModelScope.launch(Dispatchers.Main) {
+            while (true) {
+                delay(1000)
+                updateCadence(System.currentTimeMillis())
+            }
+        }
+    }
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
