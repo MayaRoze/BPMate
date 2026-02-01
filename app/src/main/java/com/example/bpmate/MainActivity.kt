@@ -32,8 +32,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun BPMateApp() {
     val navController = rememberNavController()
+    // Shared ViewModels at the App level to ensure consistent state and prevent redundant init logic
     val playbackViewModel: PlaybackViewModel = viewModel()
     val bluetoothViewModel: BluetoothViewModel = viewModel()
+    val playlistViewModel: PlaylistViewModel = viewModel()
     val context = LocalContext.current
 
     // Initialize playback controller as soon as the app starts
@@ -52,7 +54,8 @@ fun BPMateApp() {
         }
         composable("playlists") {
             PlaylistManagementScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                viewModel = playlistViewModel
             )
         }
         composable("create_activity") {
@@ -61,6 +64,7 @@ fun BPMateApp() {
                     navController.navigate("player/$playlistId") 
                 },
                 onBack = { navController.popBackStack() },
+                playlistViewModel = playlistViewModel,
                 playbackViewModel = playbackViewModel
             )
         }
@@ -75,6 +79,7 @@ fun BPMateApp() {
                     navController.navigate("analysis?activityId=$activityId") 
                 },
                 onBack = { navController.popBackStack() },
+                playlistViewModel = playlistViewModel,
                 playbackViewModel = playbackViewModel,
                 bluetoothViewModel = bluetoothViewModel
             )
@@ -95,7 +100,8 @@ fun BPMateApp() {
                         popUpTo("home") { inclusive = true }
                     } 
                 },
-                playbackViewModel = playbackViewModel
+                playbackViewModel = playbackViewModel,
+                playlistViewModel = playlistViewModel
             )
         }
         composable("history") {
@@ -103,7 +109,8 @@ fun BPMateApp() {
                 onActivityClick = { activityId ->
                     navController.navigate("analysis?activityId=$activityId")
                 },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                viewModel = playlistViewModel
             )
         }
         composable("imu_debug") {
