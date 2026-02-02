@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,6 +37,9 @@ fun IMU_DebugScreen(
     onBack: () -> Unit = {},
     bluetoothViewModel: BluetoothViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val isBluetoothEnabled by bluetoothViewModel.isBluetoothEnabled.collectAsState()
+    
     val bluetoothPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         listOf(
             Manifest.permission.BLUETOOTH_SCAN,
@@ -93,7 +98,9 @@ fun IMU_DebugScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = {
-                                    if (bluetoothPermissionsState.allPermissionsGranted) {
+                                    if (!isBluetoothEnabled) {
+                                        Toast.makeText(context, "Bluetooth is turned off", Toast.LENGTH_SHORT).show()
+                                    } else if (bluetoothPermissionsState.allPermissionsGranted) {
                                         bluetoothViewModel.startScan()
                                     } else {
                                         bluetoothPermissionsState.launchMultiplePermissionRequest()
@@ -109,11 +116,22 @@ fun IMU_DebugScreen(
                                 Text("STOP")
                             }
                         }
+                        
+                        if (!isBluetoothEnabled) {
+                            Text(
+                                "Bluetooth is disabled. Please turn it on to scan.",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                        
                         if (!bluetoothPermissionsState.allPermissionsGranted) {
                             Text(
                                 "Bluetooth permissions are required to scan for devices.",
                                 color = Color.White.copy(alpha = 0.8f),
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp)
                             )
                         }
                     }

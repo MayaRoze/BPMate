@@ -48,6 +48,9 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
     private val _cadence = MutableStateFlow(0f)
     val cadence: StateFlow<Float> = _cadence
 
+    private val _isBluetoothEnabled = MutableStateFlow(bluetoothAdapter?.isEnabled == true)
+    val isBluetoothEnabled: StateFlow<Boolean> = _isBluetoothEnabled
+
     private var bluetoothSocket: BluetoothSocket? = null
     private var inputStream: InputStream? = null
     private var outputStream: OutputStream? = null
@@ -60,12 +63,12 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
     private val STEP_THRESHOLD = 13.5f // Adjusted threshold for peak detection
     private val STEP_COOLDOWN_MS = 250L // Minimum time between steps (~240 steps/min max)
 
-    init {
-        // Periodic cadence update to ensure it drops to 0 when movement stops
-        viewModelScope.launch(Dispatchers.Main) {
-            while (true) {
-                delay(1000)
-                updateCadence(System.currentTimeMillis())
+    // Receivers must be declared before the init block
+    private val stateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == BluetoothAdapter.ACTION_STATE_CHANGED) {
+                val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+                _isBluetoothEnabled.value = (state == BluetoothAdapter.STATE_ON)
             }
         }
     }
@@ -87,6 +90,20 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
         }
+    }
+
+    init {
+        // Periodic cadence update to ensure it drops to 0 when movement stops
+        viewModelScope.launch(Dispatchers.Main) {
+            while (true) {
+                delay(1000)
+                updateCadence(System.currentTimeMillis())
+            }
+        }
+
+        // Register for bluetooth state changes
+        val stateFilter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+        getApplication<Application>().registerReceiver(stateReceiver, stateFilter)
     }
 
     fun startScan() {
@@ -260,7 +277,7 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
         super.onCleared()
         try {
             bluetoothAdapter?.cancelDiscovery()
-            getApplication<Application>().unregisterReceiver(receiver)
+            getApplication<Application>().unregisterReceiver(stateReceiver)
             inputStream?.close()
             outputStream?.close()
             bluetoothSocket?.close()
