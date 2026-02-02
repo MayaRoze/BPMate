@@ -9,6 +9,9 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.media.MediaMetadataRetriever
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -35,6 +38,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -65,6 +69,7 @@ fun PlayerScreen(
     val cadence by bluetoothViewModel.cadence.collectAsState()
     val connectionStatus by bluetoothViewModel.connectionStatus.collectAsState()
     val activityMode by playbackViewModel.activityMode.collectAsState()
+    val isRecording by playbackViewModel.isRecording.collectAsState()
     
     var currentTitle by remember { mutableStateOf("Not Playing") }
     var currentArtist by remember { mutableStateOf("") }
@@ -293,8 +298,7 @@ fun PlayerScreen(
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val label = if (activityMode == "Drive") "VELOCITY" else "CADENCE"
                         val value = if (activityMode == "Drive") "%.0f".format(smoothedVelocity) else "%.0f".format(cadence)
@@ -336,13 +340,15 @@ fun PlayerScreen(
                             Text(
                                 text = "Sensor: $connectionStatus",
                                 color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp)
                             )
                         } else if (activityMode == "Drive" && !locationPermissions.allPermissionsGranted) {
                             Text(
                                 text = "Location permission required",
                                 color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp)
                             )
                         }
                     }
@@ -390,8 +396,7 @@ fun PlayerScreen(
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
                             text = currentTitle,
@@ -475,6 +480,43 @@ fun PlayerScreen(
                     IconButton(onClick = { playbackViewModel.skipToBestMatch() }) {
                         Icon(Icons.Default.SkipNext, contentDescription = "Next (Auto-BPM)", modifier = Modifier.size(40.dp), tint = Color.White)
                     }
+                }
+            }
+        }
+
+        // Calibration Overlay
+        val isCalibrating = isRecording && (player?.mediaItemCount ?: 0) == 0
+        AnimatedVisibility(
+            visible = isCalibrating,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.85f))
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 4.dp,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    val calibrationText = if (activityMode == "Drive") {
+                        "Analyzing velocity...\nMaintain a steady speed for initial calibration"
+                    } else {
+                        "Analyzing pace...\nWalk or run at a steady rhythm for initial calibration"
+                    }
+                    Text(
+                        text = calibrationText,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }

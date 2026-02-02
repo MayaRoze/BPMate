@@ -33,6 +33,9 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
     private val _playedSongs = MutableStateFlow<List<PlayedSong>>(emptyList())
     val playedSongs = _playedSongs.asStateFlow()
 
+    private val _isRecording = MutableStateFlow(false)
+    val isRecording = _isRecording.asStateFlow()
+
     // Activity Metadata
     private val _activityName = MutableStateFlow("")
     val activityName = _activityName.asStateFlow()
@@ -56,7 +59,7 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
 
     // History to prevent repetition
     private val playedHistory = mutableListOf<String>()
-    private val HISTORY_PERCENTAGE = 0.5f // Remember up to 50% of playlist
+    private val HISTORY_PERCENTAGE = 0.5f 
 
     fun connectController(context: Context) {
         if (controllerFuture != null) return
@@ -76,12 +79,11 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
     private fun setupMediaListener(player: Player?) {
         player?.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                // Bail if we've stopped the activity
-                val playlist = currentPlaylist ?: return
+                // Ignore transitions if we are not in an active session
+                if (!_isRecording.value || currentPlaylist == null) return
 
-                // Only prepare next song if it's a natural transition or a user skip
-                // We avoid re-triggering during internal playlist modifications
-                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
+                // Prepare the next song for any transition except internal list changes
+                if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
                     pickNextSongBasedOnTarget()
                 }
 
@@ -93,8 +95,7 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
                     
                     addToHistory(item.mediaId)
 
-                    val songInPlaylist = playlist.songs.find { it.id == item.mediaId }
-                    val songBpm = songInPlaylist?.bpm ?: 0
+                    val songBpm = currentPlaylist?.songs?.find { it.id == item.mediaId }?.bpm ?: 0
                     val recordedMovementValue = if (_activityMode.value == "Drive") currentVelocity.toInt() else currentCadence.toInt()
 
                     val currentList = _playedSongs.value
@@ -126,25 +127,38 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
     private fun getMaxHistorySize(): Int {
         val playlistSize = currentPlaylist?.songs?.size ?: 0
         if (playlistSize <= 2) return 0
-        // Blacklist up to 50% of the playlist, ensuring at least 2 songs remain "fresh" (current + 1 candidate)
         return (playlistSize * HISTORY_PERCENTAGE).toInt().coerceAtMost(playlistSize - 2).coerceAtLeast(1)
     }
 
     fun updateCadence(cadence: Float) {
-        if (_activityMode.value == "Walk/Run") {
+        if (_activityMode.value == "Walk/Run" && _isRecording.value) {
             val oldCadence = currentCadence
             currentCadence = cadence
-            if (abs(oldCadence - cadence) > 5f) {
+            
+            val p = _player.value
+            val elapsed = System.currentTimeMillis() - activityStartTime
+            
+            // Initial playback trigger: Wait 10 seconds AND for a valid cadence signal
+            if (p != null && p.mediaItemCount == 0 && cadence > 0 && elapsed > 10000L) {
+                startDynamicPlayback()
+            } else if (p != null && p.mediaItemCount > 0 && abs(oldCadence - cadence) > 5f) {
                 pickNextSongBasedOnTarget()
             }
         }
     }
 
     fun updateVelocity(velocityKmH: Float) {
-        if (_activityMode.value == "Drive") {
+        if (_activityMode.value == "Drive" && _isRecording.value) {
             val oldVelocity = currentVelocity
             currentVelocity = velocityKmH
-            if (abs(oldVelocity - velocityKmH) > 10f) {
+            
+            val p = _player.value
+            val elapsed = System.currentTimeMillis() - activityStartTime
+            
+            // Initial playback trigger: Wait 5 seconds AND for a valid velocity signal
+            if (p != null && p.mediaItemCount == 0 && velocityKmH > 0 && elapsed > 5000L) {
+                startDynamicPlayback()
+            } else if (p != null && p.mediaItemCount > 0 && abs(oldVelocity - velocityKmH) > 10f) {
                 pickNextSongBasedOnTarget()
             }
         }
@@ -158,10 +172,24 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    /**
-     * Efficiently manages the queue by ensuring ONLY the next item is correctly set.
-     * Avoids removing current item to prevent track restarts ("replaying" bug).
-     */
+    private fun startDynamicPlayback() {
+        val p = _player.value ?: return
+        val playlist = currentPlaylist ?: return
+        val targetBpm = getTargetBpm()
+        
+        if (targetBpm <= 0) return 
+
+        val startSong = playlist.songs.minByOrNull { abs(it.bpm - targetBpm) } ?: return
+
+        p.stop()
+        p.clearMediaItems()
+        p.addMediaItem(createMediaItem(startSong))
+        p.prepare()
+        p.play()
+        
+        pickNextSongBasedOnTarget()
+    }
+
     private fun pickNextSongBasedOnTarget() {
         val p = _player.value ?: return
         val playlist = currentPlaylist ?: return 
@@ -173,8 +201,6 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
         if (currentIndex == C.INDEX_UNSET) return
 
         val currentMediaId = p.currentMediaItem?.mediaId ?: ""
-        
-        // Find best candidate
         val candidates = playlist.songs.filter { it.id != currentMediaId && !playedHistory.contains(it.id) }
         val nextSong = if (candidates.isNotEmpty()) {
             candidates.minByOrNull { abs(it.bpm - targetBpm) }
@@ -186,9 +212,7 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
             val nextIndex = currentIndex + 1
             val nextItem = createMediaItem(nextSong)
             
-            // Sync the queue: only ensure [current, next]
             if (nextIndex < p.mediaItemCount) {
-                // If next is already correct, do nothing. Otherwise replace.
                 if (p.getMediaItemAt(nextIndex).mediaId != nextSong.id) {
                     p.replaceMediaItem(nextIndex, nextItem)
                 }
@@ -196,22 +220,22 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
                 p.addMediaItem(nextItem)
             }
             
-            // Optional: Remove everything after the next item to keep queue clean
             while (p.mediaItemCount > nextIndex + 1) {
                 p.removeMediaItem(nextIndex + 1)
             }
-            Log.d("PlaybackViewModel", "Queue optimized at index $nextIndex: ${nextSong.title}")
         }
     }
 
     fun skipToBestMatch() {
         val p = _player.value ?: return
-        if (currentPlaylist == null) return
+        if (!_isRecording.value || currentPlaylist == null) return
         
-        // 1. Force prepare the absolute best next song for current pace
+        if (p.mediaItemCount == 0) {
+            startDynamicPlayback()
+            return
+        }
+        
         pickNextSongBasedOnTarget()
-        
-        // 2. Skip to it
         if (p.hasNextMediaItem()) {
             p.seekToNextMediaItem()
         }
@@ -236,43 +260,32 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
         _activityMode.value = mode
         _playlistName.value = playlist.name
         _startTimeMillis.value = System.currentTimeMillis()
-        setPlaylist(playlist)
-    }
-
-    fun setPlaylist(playlist: Playlist) {
-        val p = _player.value ?: return
+        _isRecording.value = true
+        
+        // Preparation without immediate playback
         currentPlaylist = playlist
         activityStartTime = System.currentTimeMillis()
         _playedSongs.value = emptyList()
         playedHistory.clear()
         
-        if (_playlistName.value.isBlank()) {
-            _playlistName.value = playlist.name
-            _startTimeMillis.value = System.currentTimeMillis()
+        val p = _player.value
+        if (p != null) {
+            p.stop()
+            p.clearMediaItems()
+            p.shuffleModeEnabled = false
+            p.repeatMode = Player.REPEAT_MODE_OFF
         }
+    }
 
-        p.stop()
-        p.clearMediaItems()
-        p.shuffleModeEnabled = false
-        p.repeatMode = Player.REPEAT_MODE_OFF
-        p.playWhenReady = true 
-
-        val targetBpm = getTargetBpm()
-        val startSong = if (targetBpm > 0) {
-            playlist.songs.minByOrNull { abs(it.bpm - targetBpm) }
-        } else {
-            playlist.songs.firstOrNull()
-        } ?: return
-
-        p.addMediaItem(createMediaItem(startSong))
-        p.prepare()
-        p.play()
-        
-        pickNextSongBasedOnTarget()
+    fun setPlaylist(playlist: Playlist) {
+        // This is now handled within startNewActivity or via dynamic trigger
+        // Keeping it for compatibility if needed, but logic moved.
+        currentPlaylist = playlist
     }
 
     fun stopPlayback() {
         val p = _player.value ?: return
+        _isRecording.value = false
         currentPlaylist = null 
         p.playWhenReady = false
         p.stop()
@@ -282,20 +295,26 @@ class PlaybackViewModel(application: Application) : AndroidViewModel(application
 
     fun stopAndSaveActivity(onSaved: (String) -> Unit) {
         val playedSongsList = _playedSongs.value 
+        val activityId = UUID.randomUUID().toString()
+        val activityNameValue = _activityName.value.ifBlank { "Untitled Activity" }
+        val activityDescValue = _activityDescription.value
+        val playlistNameValue = _playlistName.value
+        val startTimeValue = _startTimeMillis.value
+        val modeValue = _activityMode.value
+
         stopPlayback()
 
         viewModelScope.launch {
-            val activityId = UUID.randomUUID().toString()
             val duration = if (playedSongsList.isNotEmpty()) playedSongsList.last().timestamp else 0L
             
             val activityEntity = ActivityEntity(
                 id = activityId,
-                name = _activityName.value.ifBlank { "Untitled Activity" },
-                description = _activityDescription.value,
-                playlistName = _playlistName.value,
-                startTime = _startTimeMillis.value,
+                name = activityNameValue,
+                description = activityDescValue,
+                playlistName = playlistNameValue,
+                startTime = startTimeValue,
                 duration = duration,
-                mode = _activityMode.value
+                mode = modeValue
             )
             
             val playedSongEntities = playedSongsList.map { 
