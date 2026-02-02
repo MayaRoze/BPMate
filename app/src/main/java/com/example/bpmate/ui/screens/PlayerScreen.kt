@@ -73,6 +73,8 @@ fun PlayerScreen(
     var duration by remember { mutableStateOf(0L) }
     
     var artwork by remember { mutableStateOf<ImageBitmap?>(null) }
+    var isSeeking by remember { mutableStateOf(false) }
+    var seekPosition by remember { mutableStateOf(0f) }
 
     // Velocity Calculation Window (5 seconds)
     val velocityWindow = remember { mutableStateListOf<Pair<Long, Float>>() }
@@ -186,7 +188,9 @@ fun PlayerScreen(
         
         try {
             while (true) {
-                position = p.currentPosition.coerceAtLeast(0L)
+                if (!isSeeking) {
+                    position = p.currentPosition.coerceAtLeast(0L)
+                }
                 kotlinx.coroutines.delay(1000)
             }
         } finally {
@@ -417,8 +421,15 @@ fun PlayerScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Slider(
-                    value = if (duration > 0) position.toFloat() / duration.toFloat() else 0f,
-                    onValueChange = { /* Seek if needed */ },
+                    value = if (isSeeking) seekPosition else (if (duration > 0) position.toFloat() / duration.toFloat() else 0f),
+                    onValueChange = { 
+                        isSeeking = true
+                        seekPosition = it
+                    },
+                    onValueChangeFinished = {
+                        player?.seekTo((seekPosition * duration).toLong())
+                        isSeeking = false
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,
@@ -431,7 +442,11 @@ fun PlayerScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(formatTime(position), style = MaterialTheme.typography.bodySmall, color = Color.White)
+                    Text(
+                        formatTime(if (isSeeking) (seekPosition * duration).toLong() else position),
+                        style = MaterialTheme.typography.bodySmall, 
+                        color = Color.White
+                    )
                     Text(formatTime(duration), style = MaterialTheme.typography.bodySmall, color = Color.White)
                 }
 
