@@ -27,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -281,14 +282,15 @@ fun PlayerScreen(
 
                 // Movement Data Display (Cadence or Velocity)
                 Card(
-                    modifier = Modifier.width(260.dp),
+                    modifier = Modifier.width(260.dp), // Matched width to cover art
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f)
                     )
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         val label = if (activityMode == "Drive") "VELOCITY" else "CADENCE"
                         val value = if (activityMode == "Drive") "%.0f".format(smoothedVelocity) else "%.0f".format(cadence)
@@ -330,15 +332,13 @@ fun PlayerScreen(
                             Text(
                                 text = "Sensor: $connectionStatus",
                                 color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(top = 4.dp)
+                                style = MaterialTheme.typography.bodySmall
                             )
                         } else if (activityMode == "Drive" && !locationPermissions.allPermissionsGranted) {
                             Text(
                                 text = "Location permission required",
                                 color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(top = 4.dp)
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }
@@ -346,9 +346,15 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Cover Art with Drop Shadow
                 Box(
                     modifier = Modifier
-                        .size(260.dp) // Cover art size
+                        .size(260.dp)
+                        .shadow(
+                            elevation = 16.dp, 
+                            shape = MaterialTheme.shapes.large,
+                            clip = false
+                        )
                         .clip(MaterialTheme.shapes.large)
                         .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)),
                     contentAlignment = Alignment.Center
@@ -372,6 +378,7 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Song Title Card
                 Surface(
                     color = TranslucentDarkCyan.copy(alpha = 0.6f),
                     shape = MaterialTheme.shapes.medium,
@@ -379,7 +386,8 @@ fun PlayerScreen(
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = currentTitle,
