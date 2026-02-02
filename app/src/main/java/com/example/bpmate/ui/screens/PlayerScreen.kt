@@ -44,6 +44,7 @@ import com.example.bpmate.ui.theme.TranslucentDarkCyan
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 @SuppressLint("MissingPermission")
@@ -70,8 +71,11 @@ fun PlayerScreen(
     var position by remember { mutableStateOf(0L) }
     var duration by remember { mutableStateOf(0L) }
     
-    var currentSpeedKmh by remember { mutableStateOf(0f) }
     var artwork by remember { mutableStateOf<ImageBitmap?>(null) }
+
+    // Velocity Calculation Window (5 seconds)
+    val velocityWindow = remember { mutableStateListOf<Pair<Long, Float>>() }
+    var smoothedVelocity by remember { mutableStateOf(0f) }
 
     // Location Permission for Driving Mode
     val locationPermissions = rememberMultiplePermissionsState(
@@ -89,15 +93,14 @@ fun PlayerScreen(
         playbackViewModel.connectController(context)
     }
 
-    // GPS Tracking for Driving Mode
+    // GPS Tracking and Velocity Smoothing
     LaunchedEffect(activityMode, locationPermissions.allPermissionsGranted) {
         if (activityMode == "Drive" && locationPermissions.allPermissionsGranted) {
             val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
             val locationListener = object : LocationListener {
                 override fun onLocationChanged(location: Location) {
                     val speedKmh = location.speed * 3.6f
-                    currentSpeedKmh = speedKmh
-                    playbackViewModel.updateVelocity(speedKmh)
+                    velocityWindow.add(System.currentTimeMillis() to speedKmh)
                 }
                 override fun onProviderEnabled(provider: String) {}
                 override fun onProviderDisabled(provider: String) {}
@@ -105,8 +108,25 @@ fun PlayerScreen(
             
             try {
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 1f, locationListener)
+                
+                // Processing loop for sliding average
+                while (true) {
+                    val now = System.currentTimeMillis()
+                    // Remove entries older than 5 seconds
+                    velocityWindow.removeAll { it.first < now - 5000 }
+                    
+                    if (velocityWindow.isNotEmpty()) {
+                        val avg = velocityWindow.map { it.second }.average().toFloat()
+                        smoothedVelocity = avg
+                        playbackViewModel.updateVelocity(avg)
+                    } else {
+                        smoothedVelocity = 0f
+                        playbackViewModel.updateVelocity(0f)
+                    }
+                    delay(1000) // Update average every second
+                }
             } catch (e: Exception) {
-                // Fallback if GPS fails
+                // Fallback
             }
         }
     }
@@ -261,7 +281,7 @@ fun PlayerScreen(
 
                 // Movement Data Display (Cadence or Velocity)
                 Card(
-                    modifier = Modifier.width(260.dp), // Matched width to cover art
+                    modifier = Modifier.width(260.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f)
                     )
@@ -271,7 +291,7 @@ fun PlayerScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val label = if (activityMode == "Drive") "VELOCITY" else "CADENCE"
-                        val value = if (activityMode == "Drive") "%.0f".format(currentSpeedKmh) else "%.0f".format(cadence)
+                        val value = if (activityMode == "Drive") "%.0f".format(smoothedVelocity) else "%.0f".format(cadence)
                         val unit = if (activityMode == "Drive") "km / h" else "steps / min"
                         val icon = if (activityMode == "Drive") Icons.Default.DirectionsCar else Icons.Default.DirectionsWalk
 
