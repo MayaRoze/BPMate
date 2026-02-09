@@ -22,7 +22,7 @@ It supports **Bluetooth streaming from an ESP32 + IMU** and saves your sessions 
 |---|---|---|
 | <img src="screenshots/home.jpeg" alt="home" width="200"/> | <img src="screenshots/IMU_debug.jpeg" alt="IMU_debug" width="200"/> | <img src="screenshots/activity_creation.jpeg" alt="activity_creation" width="200"/> |
 
-| Initial Calibration | Player (Walking/Running) | Player (Driving) | Activity Analysis |
+| Initial Calibration | Walking/Running | Driving | Activity Analysis |
 |---|---|---|---|
 | <img src="screenshots/calibration.jpeg" alt="calibration" width="200"/> | <img src="screenshots/walking_mode_player.jpeg" alt="walking_mode_player" width="200"/> | <img src="screenshots/driving_mode_player.jpeg" alt="driving_mode_player" width="200"/> | <img src="screenshots/activity_analysis.jpeg" alt="activity_analysis" width="200"/> |
 
