@@ -8,7 +8,7 @@ It supports **Bluetooth streaming from an ESP32 + IMU** and saves your sessions 
 ## ✨ Highlights
 
 - 🎵 **Local music player** (no streaming required)
-- 🏃‍♂️ **Live cadence** display (steps/min) during recording
+- 🏃‍♂️ **Live cadence/velocity** display during recording
 - 📶 **Bluetooth IMU input** (ESP32 + sensor)
 - 🗂️ **Playlists** built from on-device audio files
 - 💾 **Activity history + analysis** (summary + songs played)
@@ -18,17 +18,17 @@ It supports **Bluetooth streaming from an ESP32 + IMU** and saves your sessions 
 
 ## 📸 Screenshots
 
-| Home | Playlists | Create Activity |
+| Home | IMU Debug | Create Activity |
 |---|---|---|
-| _[screenshot: home]_ | _[screenshot: playlists]_ | _[screenshot: create]_ |
+| <img src="screenshots/home.jpeg" alt="home" width="200"/> | <img src="screenshots/IMU_debug.jpeg" alt="IMU_debug" width="200"/> | <img src="screenshots/activity_creation.jpeg" alt="activity_creation" width="200"/> |
 
-| Player (Recording) | Analysis | History |
+| Initial Calibration | Player (Walking/Running) | Player (Driving) | Activity Analysis |
+|---|---|---|---|
+| <img src="screenshots/calibration.jpeg" alt="calibration" width="200"/> | <img src="screenshots/walking_mode_player.jpeg" alt="walking_mode_player" width="200"/> | <img src="screenshots/driving_mode_player.jpeg" alt="driving_mode_player" width="200"/> | <img src="screenshots/activity_analysis.jpeg" alt="activity_analysis" width="200"/> |
+
+| Activity History | Playlist Management Screen | Playlist Editing |
 |---|---|---|
-| _[screenshot: player + cadence]_ | _[screenshot: analysis]_ | _[screenshot: history]_ |
-
-| IMU Debug |
-|---|
-| _[screenshot: imu debug]_ |
+| <img src="screenshots/activities.jpeg" alt="activities" width="200"/> | <img src="screenshots/playlists.jpeg" alt="playlists" width="200"/> | <img src="screenshots/songs.jpeg" alt="songs" width="200"/> |
 
 ---
 
@@ -47,11 +47,13 @@ Go to **Create Activity**:
 - Pick a playlist
 - Add an optional description
 
+> Note: In order to use walk/run mode, you need to first enter the `IMU Debug` screen and connect your ESP.
+
 ### 3) Record & listen ▶️
 On the **Player / Recording** screen:
 - Play/pause/skip songs
 - See the current song details
-- Watch your **cadence (steps/min)** update live
+- Watch your **cadence (steps/min)** or **speed (km/h)** update live
 - Press **Stop and Save** when finished
 
 ### 4) Review results 📊
@@ -76,8 +78,9 @@ BPMate can receive IMU samples over Bluetooth from an ESP32 device.
 BPMate stores:
 - Activity details (name, mode, playlist, timestamps, optional description)
 - The list of songs played during the activity
+- The playlists you create
 
-This enables session analysis and activity history without any cloud services.
+This allows for a smooth listening experience, and enables session analysis and activity history without any cloud services.
 
 ---
 
@@ -85,7 +88,7 @@ This enables session analysis and activity history without any cloud services.
 
 Depending on Android version, BPMate may request:
 - 📶 Bluetooth permissions (scan/connect)
-- 📍 Location permission (required for Bluetooth discovery on some versions)
+- 📍 Location permission (required for driving mode and Bluetooth discovery on some versions)
 - 🎵 Media/files permission (to read local audio)
 
 ---
