@@ -160,3 +160,44 @@ void loop() {
 
   delay(1000 / sampleFreq);  // ~50 Hz
 }
+
+// #include "BluetoothSerial.h"
+
+// BluetoothSerial SerialBT;
+// bool isSending = true;
+// unsigned long startTimeMs = 0;
+
+// void setup() {
+//   Serial.begin(115200);
+//   SerialBT.begin("ESP32-BT-Happy");
+//   Serial.println("System Ready. Connect your app!");
+//   startTimeMs = millis();
+// }
+
+// void loop() {
+//   // Handle commands
+//   if (SerialBT.available()) {
+//     String incoming = SerialBT.readStringUntil('\n');
+//     incoming.trim();
+//     if (incoming == "START") isSending = true;
+//     if (incoming == "STOP") isSending = false;
+//   }
+
+//   if (!SerialBT.hasClient()) {
+//     delay(500);
+//     return;
+//   }
+
+//   if (isSending) {
+//     float t = (millis() - startTimeMs) / 1000.0f;
+    
+//     // Create dummy data to test the Android App
+//     String dataLine = String(t, 2) + ",1.11,2.22,3.33,4.44,5.55,6.66";
+    
+//     SerialBT.println(dataLine); // Send to Phone
+//     Serial.print("BT Sent: ");  // Print to PC
+//     Serial.println(dataLine);
+//   }
+  
+//   delay(100); // 10Hz for testing
+// }
