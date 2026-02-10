@@ -3,6 +3,8 @@
 BPMate is an Android app that plays **local music files** that fit your **movement speed (cadence)**.  
 It supports **Bluetooth streaming from an ESP32 + IMU** and saves your sessions to a **local database** for later review.
 
+> Note: the arduino code for the ESP32 is located in the `firmware_code` folder. The notebook and recordings zip file for Part A of the project are located in the `part_a` folder. The notebook extracts all zip files in the current working directory (which is `part_a` in that case), so be advised.
+
 ---
 
 ## ✨ Highlights
